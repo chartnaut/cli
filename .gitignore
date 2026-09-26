@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build-test/
+release
+# Never commit credentials or local config
+.env
+.env.*
+*.pem
+*.key
+credentials.json
+# OS / editor / logs
+.DS_Store
+*.log
+.vscode/
+.idea/

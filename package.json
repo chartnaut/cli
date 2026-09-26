@@ -1,0 +1,45 @@
+{
+  "name": "chartnaut",
+  "version": "0.1.0",
+  "description": "Command-line client for Chartnaut: write, validate, run and save indicators, definitions and studies from your terminal or a coding agent. Scripts run on Chartnaut servers. Distributed as standalone binaries, not on npm.",
+  "keywords": ["chartnaut", "cli", "trading", "indicators", "definitions", "studies", "backtesting", "market-research", "coding-agents", "claude-code", "codex"],
+  "homepage": "https://docs.chartnaut.com/cli/overview",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chartnaut/cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/chartnaut/cli/issues",
+    "email": "help@chartnaut.com"
+  },
+  "author": "Chartnaut",
+  "type": "module",
+  "bin": {
+    "chartnaut": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit",
+    "test": "tsc -p tsconfig.test.json && node --test build-test/test/*.test.js",
+    "test:e2e": "npm run build && tsc -p tsconfig.test.json && node --test --test-timeout=60000 build-test/test/e2e/*.e2e.js",
+    "build:binaries": "npm run build && node scripts/build-binaries.mjs",
+    "publish:r2": "node scripts/publish-r2.mjs"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-s3": "^3.1141.0",
+    "@types/node": "^20.19.43",
+    "typescript": "^5.9.3"
+  },
+  "private": true
+}
