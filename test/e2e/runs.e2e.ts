@@ -106,7 +106,8 @@ describe('run', () => {
     w.api.on('GET /runs/run_def/results', (req) => ({ text: req.query.cursor === '5000' ? eventsCsv(5000, 2) : eventsCsv(0, 5000), headers: { 'Content-Type': 'text/csv' } }));
     const r = await w.cli(['run', 'bull-bar', '--on', 'BTC', '--last', '30d', '--out', 'out/events.csv']);
     assert.equal(r.code, 0, r.stderr);
-    assert.match(r.stdout, new RegExp(`wrote ${path.join('out', 'events.csv').replace(/\\/g, '\\\\')}`));
+    // The CLI prints paths with / on every OS.
+    assert.match(r.stdout, /wrote out\/events\.csv/);
     const pages = w.api.calls('GET /runs/run_def/results');
     assert.deepEqual(pages.map((p) => p.query), [{ format: 'csv' }, { format: 'csv', cursor: '5000' }]);
     const lines = fs.readFileSync(path.join(w.cwd, 'out', 'events.csv'), 'utf8').trimEnd().split('\n');
