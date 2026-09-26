@@ -67,6 +67,15 @@ export function readProjectConfig(start: string): ProjectConfig {
   }
 }
 
+/**
+ * A path as the CLI prints it and as a command accepts it back: relative to `from`, with `/`
+ * separators on every OS (Windows accepts `/`), so output reads the same everywhere.
+ */
+export function displayPath(from: string, to: string): string {
+  const rel = path.relative(from, to);
+  return rel ? rel.split(path.sep).join('/') : '.';
+}
+
 const IGNORED = new Set([SCRIPT_FILE, 'node_modules', '.git', '.DS_Store']);
 
 function listFiles(dir: string, rel = ''): string[] {

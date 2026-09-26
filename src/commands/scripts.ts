@@ -25,6 +25,7 @@ import {
   starterFor,
   writeScript,
   writeScriptMeta,
+  displayPath,
 } from '../project.js';
 
 export const INIT_DEFAULTS = { instrument: 'BTC', timeframe: '5m', window: '90d' };
@@ -143,7 +144,7 @@ export function registerScripts(program: Command, env: Env): void {
       const dir = path.join(root, KIND_DIR[kind], slug);
       if (fs.existsSync(path.join(dir, 'script.json'))) throw new CliError(`error: invalid_request: ${dir} already exists`, EXIT.USAGE);
       writeScript(dir, { kind, slug, name: opts.name ?? slug, entry: 'main.ts' }, starterFor(kind));
-      const rel = path.relative(env.ctx.cwd, dir) || '.';
+      const rel = displayPath(env.ctx.cwd, dir);
       if (env.isJson(cmd)) return env.printJson({ dir: rel, kind, slug });
       env.out(`wrote ${rel}/script.json and ${rel}/main.ts`);
       env.out(`next: chartnaut docs, edit main.ts, then chartnaut validate ${rel}`);
@@ -231,7 +232,7 @@ export function registerScripts(program: Command, env: Env): void {
       const entry = files.find((f) => f.entry)?.path ?? files[0]!.path;
       const extra = writeScript(dir, { kind, slug, name: script.name ?? slug, entry, version: script.version ?? script.latest_version }, files.map(({ path: fp, code }) => ({ path: fp, code })));
       if (env.isJson(cmd)) return env.printJson(script);
-      env.out(`pulled ${slug}@${script.version ?? script.latest_version} → ${path.relative(env.ctx.cwd, dir) || '.'} (${files.length} files)`);
+      env.out(`pulled ${slug}@${script.version ?? script.latest_version} → ${displayPath(env.ctx.cwd, dir)} (${files.length} files)`);
       if (extra.length) env.err(`warning: local files not in the remote version (they will be deleted on the next push unless you keep them): ${extra.join(', ')}`);
     });
 

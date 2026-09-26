@@ -12,7 +12,8 @@ test('login --token validates via /me and stores the token with mode 0600', asyn
   assert.equal(h.calls[0]!.headers.authorization, 'Bearer cn_live_abc');
   const file = path.join(h.home, '.config', 'chartnaut', 'credentials.json');
   assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).token, 'cn_live_abc');
-  assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+  // Windows has no Unix permission bits; the file is still private to the user profile.
+  if (process.platform !== 'win32') assert.equal(fs.statSync(file).mode & 0o777, 0o600);
   // the stored token is used afterwards
   assert.equal(await h.run('whoami'), 0);
   assert.equal(h.calls[1]!.headers.authorization, 'Bearer cn_live_abc');

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { Command, Option } from 'commander';
 import type { Env } from '../env.js';
 import { cell, shortTime, table } from '../output.js';
-import { readProjectConfig } from '../project.js';
+import { readProjectConfig, displayPath } from '../project.js';
 import { EXIT, exitCodeForRun } from '../errors.js';
 import { fetchCsvPages, type PageSizes } from './run.js';
 import { parseInstruments, parseTimeframe, parseWindow, type RunFlags } from '../runargs.js';
@@ -92,7 +92,7 @@ export function registerEvents(program: Command, env: Env): void {
         const target = path.resolve(env.ctx.cwd, opts.out);
         fs.mkdirSync(path.dirname(target), { recursive: true });
         fs.writeFileSync(target, csv ? String(data) : JSON.stringify(data, null, 2) + '\n');
-        env.out(`wrote ${path.relative(env.ctx.cwd, target) || target}`);
+        env.out(`wrote ${displayPath(env.ctx.cwd, target)}`);
         if (more) env.err(`more: --cursor ${more} (or --all)`);
         return;
       }

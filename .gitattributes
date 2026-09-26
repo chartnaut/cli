@@ -1,0 +1,6 @@
+# Keep LF everywhere, including on Windows checkouts: tests compare exact output, and a shell
+# script with CRLF endings fails to run.
+* text=auto eol=lf
+*.sh text eol=lf
+*.ps1 text eol=lf
+*.png binary

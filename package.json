@@ -2,7 +2,19 @@
   "name": "chartnaut",
   "version": "0.1.0",
   "description": "Command-line client for Chartnaut: write, validate, run and save indicators, definitions and studies from your terminal or a coding agent. Scripts run on Chartnaut servers. Distributed as standalone binaries, not on npm.",
-  "keywords": ["chartnaut", "cli", "trading", "indicators", "definitions", "studies", "backtesting", "market-research", "coding-agents", "claude-code", "codex"],
+  "keywords": [
+    "chartnaut",
+    "cli",
+    "trading",
+    "indicators",
+    "definitions",
+    "studies",
+    "backtesting",
+    "market-research",
+    "coding-agents",
+    "claude-code",
+    "codex"
+  ],
   "homepage": "https://docs.chartnaut.com/cli/overview",
   "repository": {
     "type": "git",
@@ -27,8 +39,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.test.json --noEmit",
-    "test": "tsc -p tsconfig.test.json && node --test build-test/test/*.test.js",
-    "test:e2e": "npm run build && tsc -p tsconfig.test.json && node --test --test-timeout=60000 build-test/test/e2e/*.e2e.js",
+    "test": "tsc -p tsconfig.test.json && node scripts/run-tests.mjs build-test/test .test.js",
+    "test:e2e": "npm run build && tsc -p tsconfig.test.json && node scripts/run-tests.mjs build-test/test/e2e .e2e.js --test-timeout=60000",
     "build:binaries": "npm run build && node scripts/build-binaries.mjs",
     "publish:r2": "node scripts/publish-r2.mjs"
   },

@@ -55,7 +55,9 @@ describe('a project from init to push, pull and diff', () => {
       const r = await w.cli(args);
       assert.equal(r.code, 0, r.stderr);
       const rel = path.join(dir, slug);
-      assert.match(r.stdout, re(`wrote ${rel}/script.json and ${rel}/main.ts`));
+      // The CLI prints paths with / on every OS.
+      const shown = `${dir}/${slug}`;
+      assert.match(r.stdout, re(`wrote ${shown}/script.json and ${shown}/main.ts`));
       assert.deepEqual(readJson(path.join(w.cwd, rel, 'script.json')), { kind, slug, name: slug === 'my-ema' ? 'My EMA' : slug, entry: 'main.ts' });
       assert.match(fs.readFileSync(path.join(w.cwd, rel, 'main.ts'), 'utf8'), /runs on Chartnaut servers/);
     }
@@ -173,7 +175,7 @@ describe('a project from init to push, pull and diff', () => {
     assert.equal(r.code, 0, r.stderr);
     assert.equal(w.api.requests.at(-1)!.query.include, 'source');
     const dir = path.join(w.cwd, 'indicators', 'session-range');
-    assert.match(r.stdout, re(`pulled session-range@7 → ${path.join('indicators', 'session-range')} (2 files)`));
+    assert.match(r.stdout, re(`pulled session-range@7 → indicators/session-range (2 files)`));
     assert.equal(fs.readFileSync(path.join(dir, 'lib', 'range.ts'), 'utf8'), 'export const range = 1;\n');
     assert.deepEqual(readJson(path.join(dir, 'script.json')), { kind: 'indicator', slug: 'session-range', name: 'Session range', entry: 'main.ts', version: 7 });
   });

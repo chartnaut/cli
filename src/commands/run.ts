@@ -5,7 +5,7 @@ import { Command, Option } from 'commander';
 import type { Env } from '../env.js';
 import { ApiError, CliError, EXIT, exitCodeForErrorCode, exitCodeForRun, formatApiError, formatDiagnostic } from '../errors.js';
 import { cell, shortTime, table } from '../output.js';
-import { parseKind, readProjectConfig } from '../project.js';
+import { parseKind, readProjectConfig, displayPath } from '../project.js';
 import { buildRunRequests, type CreateRunRequest, type RunFlags } from '../runargs.js';
 import { csvDataRows, mergeCsvPages } from '../csv.js';
 
@@ -440,7 +440,7 @@ async function writeOut(env: Env, run: Run, file: string, format: 'csv' | 'json'
   const data = await fetchResults(env, run.id, format, {}, true, run.kind);
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, format === 'csv' ? String(data) : JSON.stringify(data, null, 2) + '\n');
-  const msg = `wrote ${path.relative(env.ctx.cwd, target) || target}`;
+  const msg = `wrote ${displayPath(env.ctx.cwd, target)}`;
   if (json) env.err(msg);
   else env.out(msg);
 }
