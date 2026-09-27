@@ -236,14 +236,14 @@ describe('the program itself', () => {
     const section = r.stdout.split(/^Commands:$/m)[1] ?? '';
     const names = [...section.matchAll(/^ {2}(\S+)/gm)].map((m) => m[1]).sort();
     assert.deepEqual(names, [
-      'collect', 'diff', 'docs', 'events', 'help', 'init', 'instruments', 'library', 'login', 'logout', 'ls', 'new',
+      'collect', 'diff', 'docs', 'events', 'help', 'init', 'insights', 'instruments', 'library', 'login', 'logout', 'ls', 'mcp', 'new',
       'open', 'pull', 'push', 'run', 'runs', 'upgrade', 'usage', 'validate', 'versions', 'whoami',
     ]);
     assert.equal(w.api.requests.length, 0);
   });
 
-  it('mcp and webhooks are not commands', async () => {
-    for (const argv of [['mcp', 'install'], ['webhooks', 'ls']]) {
+  it('webhooks is not a command', async () => {
+    for (const argv of [['webhooks', 'ls']]) {
       const r = await w.cli(argv);
       assert.equal(r.code, 4, argv.join(' '));
       assert.match(r.stderr, re(`unknown command '${argv[0]}'`));

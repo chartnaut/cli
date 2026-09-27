@@ -63,6 +63,7 @@ With several instruments the exit code is the highest among them. The CLI has al
 - Keep your own instructions outside the `chartnaut:begin` / `chartnaut:end` block; `chartnaut init` replaces what is inside it.
 - Do not `push --force` without the user's agreement.
 - Start on short windows. Every run uses the account's shared runs at once and compute.
+- `chartnaut mcp install [claude|codex|cursor]` prints how to connect Claude Code, Cursor or Codex to Chartnaut's MCP server. Do not add `--write` without the user's agreement: for `claude` and `cursor` it writes their API key into that client's config.
 
 ### Where the docs live
 
@@ -72,6 +73,7 @@ With several instruments the exit code is the highest among them. The CLI has al
 - Limits: https://docs.chartnaut.com/cli/limits/
 - Scripting: https://docs.chartnaut.com/scripting/overview/
 - API: https://docs.chartnaut.com/cli/api-reference/
+- MCP server: https://docs.chartnaut.com/cli/mcp-overview
 
 ## Part 2: working on this repository
 
@@ -91,7 +93,7 @@ Node 20 or later. `npm run build:binaries` also needs Bun and is for releases on
 ### Layout
 
 - `src/cli.ts` builds the commander program and maps errors to exit codes.
-- `src/commands/*.ts` hold the commands: `account.ts` (login, logout, whoami, usage, library, instruments, docs), `scripts.ts` (init, new, validate, push, pull, diff, ls, versions, open), `run.ts` (run, runs), `events.ts` (events, collect), `upgrade.ts`.
+- `src/commands/*.ts` hold the commands: `account.ts` (login, logout, whoami, usage, library, instruments, docs), `scripts.ts` (init, new, validate, push, pull, diff, ls, versions, open), `run.ts` (run, runs), `events.ts` (events, collect), `mcp.ts` (mcp install), `upgrade.ts`.
 - `src/client.ts` is the only HTTP code: auth header, retries, `Retry-After`, `Idempotency-Key`.
 - `src/context.ts` defines `Ctx`, everything that touches the outside world. Commands never reach `process`, the network or the home folder directly; tests pass a fake `Ctx`.
 - `src/errors.ts` holds `EXIT` and the error-code to exit-code map.

@@ -107,6 +107,9 @@ export function formatDiagnostic(d: Diagnostic): string {
 export function formatApiError(e: ApiError): string[] {
   const lines = [`error: ${e.body.code}: ${e.body.message}`];
   for (const d of e.diagnostics) lines.push(formatDiagnostic(d));
+  const details = e.body.details ?? {};
+  if (typeof details.fix === 'string' && details.fix) lines.push(`fix: ${details.fix}`);
+  if (typeof details.docs_url === 'string' && details.docs_url) lines.push(`docs: ${details.docs_url}`);
   if (e.body.request_id) lines.push(`request_id: ${e.body.request_id}`);
   return lines;
 }

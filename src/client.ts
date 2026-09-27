@@ -63,6 +63,9 @@ export class Client {
   async put<T = any>(p: string, opts: RequestOptions = {}): Promise<ApiResponse<T>> {
     return this.request<T>('PUT', p, opts);
   }
+  async patch<T = any>(p: string, opts: RequestOptions = {}): Promise<ApiResponse<T>> {
+    return this.request<T>('PATCH', p, opts);
+  }
   async delete<T = any>(p: string, opts: RequestOptions = {}): Promise<ApiResponse<T>> {
     return this.request<T>('DELETE', p, opts);
   }

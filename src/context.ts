@@ -34,12 +34,7 @@ export function realCtx(): Ctx {
     err: (t) => process.stderr.write(t.endsWith('\n') ? t : t + '\n'),
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
     readSecret,
-    exec: (cmd, args) =>
-      new Promise((resolve) => {
-        const child = spawn(cmd, args, { stdio: 'inherit' });
-        child.on('error', () => resolve(127));
-        child.on('exit', (code) => resolve(code ?? 1));
-      }),
+    exec: (cmd, args) => execCommand(cmd, args, process.platform),
     platform: process.platform,
     arch: process.arch,
     execPath: process.execPath,
@@ -82,5 +77,28 @@ async function readSecret(prompt: string): Promise<string> {
       process.stderr.write('\n');
     };
     stdin.on('data', onData);
+  });
+}
+
+/** Arguments cmd.exe would interpret. A `.cmd` fallback refuses them rather than risk injection. */
+const CMD_UNSAFE = /["%^&|<>\r\n]/;
+
+/**
+ * Starts a program and resolves its exit code (127 when it cannot be started). On Windows,
+ * tools installed by npm (such as Claude Code's `claude`) are `.cmd` shims, which Node only
+ * starts through a shell: when the plain name is not found, retry `<cmd>.cmd` through cmd.exe
+ * with every argument double-quoted, refusing any argument cmd.exe would interpret.
+ */
+export function execCommand(cmd: string, args: string[], platform: NodeJS.Platform): Promise<number> {
+  const run = (c: string, a: string[], shell: boolean) =>
+    new Promise<number | 'missing'>((resolve) => {
+      const child = spawn(c, a, { stdio: 'inherit', shell });
+      child.on('error', (e: NodeJS.ErrnoException) => resolve(e.code === 'ENOENT' || e.code === 'EINVAL' ? 'missing' : 127));
+      child.on('exit', (code) => resolve(code ?? 1));
+    });
+  return run(cmd, args, false).then((r) => {
+    if (r !== 'missing') return r;
+    if (platform !== 'win32' || /[\\/.]/.test(cmd) || args.some((a) => CMD_UNSAFE.test(a))) return 127;
+    return run(`${cmd}.cmd`, args.map((a) => `"${a}"`), true).then((r2) => (r2 === 'missing' ? 127 : r2));
   });
 }

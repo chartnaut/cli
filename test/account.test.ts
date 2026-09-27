@@ -210,13 +210,14 @@ test('docs, instruments, library search, usage requests', async () => {
   assert.match(h.out(), /indicators\s+1\s+unlimited/);
 });
 
-test('mcp and webhooks are not commands (no backend serves them yet)', async () => {
+test('webhooks is not a command (no backend serves it yet); mcp is', async () => {
   const h = harness();
-  for (const argv of [['mcp', 'install'], ['webhooks', 'ls'], ['webhooks', 'add', 'https://example.com/hook']]) {
+  for (const argv of [['webhooks', 'ls'], ['webhooks', 'add', 'https://example.com/hook']]) {
     assert.equal(await h.run(...argv), 4, argv.join(' '));
     assert.match(h.err(), new RegExp(`unknown command '${argv[0]}'`));
   }
   assert.equal(h.calls.length, 0);
   assert.equal(await h.run('--help'), 0);
-  assert.doesNotMatch(h.out(), /\bmcp\b|webhooks/);
+  assert.doesNotMatch(h.out(), /webhooks/);
+  assert.match(h.out(), /^ {2}mcp\b/m);
 });

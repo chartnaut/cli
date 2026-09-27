@@ -2,6 +2,12 @@
 
 Notable changes to the Chartnaut CLI. Versions follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+- `chartnaut insights` lists your Forward Insights; `insights create <run> --name <name>` puts a study run on your charts (`--dry-run` prints the preview card without saving), and `insights show`, `update` and `rm` manage them. The study must publish `pin_cell`.
+- API errors now print `details.fix` and `details.docs_url` as `fix:` and `docs:` lines when the server sends them.
+- `chartnaut mcp install [claude|codex|cursor]` prints the setup for connecting Claude Code, Cursor or Codex to Chartnaut's MCP server (`https://api.chartnaut.com/v1/mcp`). `--write` applies it: `claude mcp add` for Claude Code, `~/.cursor/mcp.json` for Cursor, `~/.codex/config.toml` for Codex. It makes no network calls and never prints the saved key.
+
 ## 0.1.0
 
 The first public release.

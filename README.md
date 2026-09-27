@@ -14,6 +14,7 @@ The CLI and the [API](https://docs.chartnaut.com/cli/api-overview/) need a Start
 
 - [Quick start](#quick-start)
 - [For coding agents](#for-coding-agents)
+- [Use from Claude, ChatGPT, Cursor](#use-from-claude-chatgpt-cursor)
 - [Concepts](#concepts)
 - [Command reference](#command-reference)
 - [Exit codes](#exit-codes)
@@ -138,6 +139,23 @@ The CLI is built to be driven by Claude Code, Codex and other coding agents. Sta
 - Every command takes `--json` and prints the raw API response on stdout. Errors go to stderr; with `--json` the error body is also printed on stdout.
 - `chartnaut docs` lists the [scripting reference](https://docs.chartnaut.com/scripting/overview/) topics and `chartnaut docs <topic>` prints one as markdown. It works before you sign in.
 - Output is plain fixed-width tables with no colour.
+
+## Use from Claude, ChatGPT, Cursor
+
+Chartnaut also runs a remote MCP server, so an assistant can use your Chartnaut account without the CLI installed. The server is at:
+
+```
+https://api.chartnaut.com/v1/mcp
+```
+
+Claude, ChatGPT and Cursor connect with that URL and sign you in to Chartnaut through your browser (OAuth), so no API key is needed. A client that cannot sign in that way can send an API key as `Authorization: Bearer <key>` instead. The MCP server needs a Starter plan or above, like the CLI.
+
+`chartnaut mcp install` prints the setup for Claude Code, Cursor and Codex, and `chartnaut mcp install <client> --write` applies it. It makes no network calls. See [MCP install](#mcp-install) for the details.
+
+- [MCP overview](https://docs.chartnaut.com/cli/mcp-overview)
+- [Claude](https://docs.chartnaut.com/cli/mcp-claude)
+- [ChatGPT](https://docs.chartnaut.com/cli/mcp-chatgpt)
+- [Cursor and Codex](https://docs.chartnaut.com/cli/mcp-cursor-and-codex)
 
 ## Concepts
 
@@ -311,6 +329,28 @@ chartnaut collect orb-break --on BTC --tf 5m --last 1y --wait
 
 `collect --wait` checks every 3 seconds for up to 20 minutes. A study run from the CLI runs each definition it declares over the study's window first, so you rarely need `collect` before one. The events count toward your plan's [definition events](https://docs.chartnaut.com/account/definition-events-limit/).
 
+### Forward Insights
+
+[Forward Insights](https://docs.chartnaut.com/guides/forward-insights/), [The pin_cell contract](https://docs.chartnaut.com/scripting/chart-pins-overview/), [Create a Forward Insight](https://docs.chartnaut.com/cli/api-create-insight/)
+
+A Forward Insight puts a study on your charts: click one of the definition's events and a card shows what happened after events like it. The study must publish a `pin_cell` result, one cell per breakdown combination. The CLI never writes it for you and spends no AI credits.
+
+| Command | What it does | Flags |
+|---|---|---|
+| `chartnaut insights` | Lists your Forward Insights | `--definition`, `--study`, `--on`, `--tf`, `--limit`, `--cursor` |
+| `chartnaut insights create <run>` | Puts a succeeded study run on your charts (its instrument and timeframe) | `--name` (required), `--definition`, `--description`, `--dry-run`, `--no-replace` |
+| `chartnaut insights show <id>` | One insight | |
+| `chartnaut insights update <id>` | Renames it or changes its description | `--name`, `--description` |
+| `chartnaut insights rm <id>` | Takes it off your charts; the study and runs are kept | |
+
+```bash
+chartnaut run my-study --on BTC --tf 1h --last 2y
+chartnaut insights create run_7k2m9q4xw1ht0bza --name "Follow-through by session" --dry-run
+chartnaut insights create run_7k2m9q4xw1ht0bza --name "Follow-through by session"
+```
+
+When the study needs a change, the error ends with a `fix:` line and a `docs:` link.
+
 ### Library
 
 [Community library](https://docs.chartnaut.com/guides/community-library/), [Search the library](https://docs.chartnaut.com/cli/api-search-library/), [Get a library script](https://docs.chartnaut.com/cli/api-get-library-script/)
@@ -352,6 +392,24 @@ These are the [Scripting](https://docs.chartnaut.com/scripting/overview/) pages.
 | Command | Does | Main flags |
 |---|---|---|
 | `chartnaut upgrade` | Downloads the latest release, checks its SHA-256 and replaces the running executable. If the checksum does not match, nothing changes | `--check` only reports whether a newer version exists |
+
+### MCP install
+
+Connects Claude Code, Cursor or Codex to Chartnaut's [MCP server](#use-from-claude-chatgpt-cursor). The URL is the API address plus `/mcp`, so it follows `CHARTNAUT_API_URL`. The command never calls the API.
+
+| Command | Does | Main flags |
+|---|---|---|
+| `chartnaut mcp install [claude\|codex\|cursor]` | Prints the setup for one client, or all three. The browser sign-in (OAuth) variant needs no key; the API-key variants read `CHARTNAUT_TOKEN` from the environment and the saved key is never printed | `--write` applies it for the named client |
+
+With `--write`:
+
+| Client | Does |
+|---|---|
+| `claude` | Runs `claude mcp add --transport http --scope user chartnaut <url>` with your saved API key as the `Authorization` header. Needs Claude Code's `claude` command on your `PATH` |
+| `cursor` | Adds `mcpServers.chartnaut` with your saved API key to `~/.cursor/mcp.json`, keeping every other server. Refuses a file that is not valid JSON. The file is set to mode `0600` |
+| `codex` | Adds or replaces the `[mcp_servers.chartnaut]` table in `~/.codex/config.toml` with `bearer_token_env_var = "CHARTNAUT_TOKEN"`, leaving the rest of the file as it was. Writes no key: Codex reads `CHARTNAUT_TOKEN` from the environment it starts from |
+
+`claude` and `cursor` need a key from `chartnaut login` or `CHARTNAUT_TOKEN`, and exit 3 without one. Revoke the key under Settings → Developers to cut the client off. [MCP overview](https://docs.chartnaut.com/cli/mcp-overview), [Claude](https://docs.chartnaut.com/cli/mcp-claude), [Cursor and Codex](https://docs.chartnaut.com/cli/mcp-cursor-and-codex)
 
 ### Open
 

@@ -250,3 +250,14 @@ test('collect --wait only counts its own collection', () => {
   assert.equal(isThisCollection({ instrument: 'HYPERLIQUID:BTC', timeframe: '5m', from: '2025-01-01', to: '2025-02-01' }, res), false);
   assert.equal(isThisCollection({ instrument: '', timeframe: '5m' }, res), true);
 });
+
+test('execCommand: a missing program is 127; the Windows .cmd retry refuses paths and unsafe arguments', async () => {
+  const { execCommand } = await import('../src/context.js');
+  const missing = 'chartnaut-no-such-program-xyz';
+  assert.equal(await execCommand(missing, [], 'linux'), 127);
+  // On Windows the retry would go through cmd.exe: an argument it would interpret is refused, not passed.
+  assert.equal(await execCommand(missing, ['a & calc'], 'win32'), 127);
+  assert.equal(await execCommand(missing, ['50%'], 'win32'), 127);
+  // A path is never retried as <path>.cmd.
+  assert.equal(await execCommand('./' + missing, [], 'win32'), 127);
+});

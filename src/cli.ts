@@ -8,6 +8,8 @@ import { registerRun } from './commands/run.js';
 import { registerScripts } from './commands/scripts.js';
 import { registerEvents } from './commands/events.js';
 import { registerUpgrade } from './commands/upgrade.js';
+import { registerMcp } from './commands/mcp.js';
+import { registerInsights } from './commands/insights.js';
 
 export function buildProgram(env: Env): Command {
   // -v / --version is handled in main() before commander sees it, and only before the subcommand:
@@ -32,7 +34,9 @@ export function buildProgram(env: Env): Command {
   registerScripts(program, env);
   registerRun(program, env);
   registerEvents(program, env);
+  registerInsights(program, env);
   registerAccount(program, env);
+  registerMcp(program, env);
   registerUpgrade(program, env);
   // Subcommands inherit output + exitOverride for usage errors.
   const walk = (c: Command) => {

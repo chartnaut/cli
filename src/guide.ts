@@ -107,6 +107,21 @@ window it covered. Studies read those stored events:
   window it has not covered yet (only the missing part runs). A study runs its definitions over its
   window automatically.
 
+## Putting a study on the chart (Forward Insights)
+
+A Forward Insight shows a study's answer when you click one of a definition's events on a chart.
+The study must publish \`pin_cell\`; read \`chartnaut docs chart-pins-overview\` before writing it:
+
+- \`results.declare({ id: "pin_cell", kind: "popover_layout", indexedBy: [<scope dimensions>] })\`
+  (\`[]\` for one global card); scope dimensions are facts known when the event fires.
+- \`ctx.scopeEvent({ ...every scope dimension })\` in \`onEvent\`, before any outcome read or early return.
+- In \`onFinish\`, one \`ctx.popoverLayout.cell({ dims, n, blocks })\` per combination, with a true \`n\`.
+
+Then run the study on the instrument and timeframe to chart, check
+\`chartnaut runs results <id> --keys pin_cell\`, and
+\`chartnaut insights create <run id> --name "<card title>" --dry-run\`. Show the preview, then run it
+without \`--dry-run\`. A refusal prints \`fix:\` with what the study needs.
+
 ## When something looks wrong
 
 - \`failure.kind\` says why a run stopped: \`script\` (your code), \`data_not_ready\` /
