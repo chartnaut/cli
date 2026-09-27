@@ -117,12 +117,22 @@ if [ "$on_path" = 0 ] && [ "${CHARTNAUT_NO_MODIFY_PATH:-0}" != 1 ]; then
     *) profile="$HOME/.profile"; line="export PATH=\"$BIN_DIR:\$PATH\"" ;;
   esac
   mkdir -p "$(dirname "$profile")"
-  if ! grep -qs "$BIN_DIR" "$profile"; then
+  # An earlier install, or the user, may have written the directory as $HOME/… or ~/… instead.
+  rel="${BIN_DIR#"$HOME"/}"
+  if grep -qsF "$BIN_DIR" "$profile" || { [ "$rel" != "$BIN_DIR" ] && grep -qsE "(\\\$HOME|\\\$\{HOME\}|~)/$rel" "$profile"; }; then
+    say "${green}✓${reset} $BIN_DIR is already in $profile"
+  else
     printf '\n# Chartnaut CLI\n%s\n' "$line" >> "$profile"
     say "${green}✓${reset} added $BIN_DIR to PATH in $profile"
   fi
+  shown_profile="$profile"
+  case "$profile" in "$HOME"/*) shown_profile="~/${profile#"$HOME"/}" ;; esac
   say ""
-  say "Open a new terminal, or run:  ${bold}$line${reset}"
+  say "This terminal was open before the install, so reload your shell profile to use chartnaut here:"
+  say ""
+  say "  ${bold}source $shown_profile${reset}"
+  say ""
+  say "New terminals pick it up automatically."
 fi
 
 say ""

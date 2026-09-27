@@ -42,7 +42,8 @@
     "test": "tsc -p tsconfig.test.json && node scripts/run-tests.mjs build-test/test .test.js",
     "test:e2e": "npm run build && tsc -p tsconfig.test.json && node scripts/run-tests.mjs build-test/test/e2e .e2e.js --test-timeout=60000",
     "build:binaries": "npm run build && node scripts/build-binaries.mjs",
-    "publish:r2": "node scripts/publish-r2.mjs"
+    "publish:r2": "node scripts/publish-r2.mjs",
+    "publish:installers": "node scripts/publish-installers.mjs"
   },
   "license": "MIT",
   "dependencies": {

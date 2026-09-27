@@ -2,12 +2,6 @@
 
 Notable changes to the Chartnaut CLI. Versions follow [Semantic Versioning](https://semver.org/).
 
-## Unreleased
-
-- `chartnaut insights` lists your Forward Insights; `insights create <run> --name <name>` puts a study run on your charts (`--dry-run` prints the preview card without saving), and `insights show`, `update` and `rm` manage them. The study must publish `pin_cell`.
-- API errors now print `details.fix` and `details.docs_url` as `fix:` and `docs:` lines when the server sends them.
-- `chartnaut mcp install [claude|codex|cursor]` prints the setup for connecting Claude Code, Cursor or Codex to Chartnaut's MCP server (`https://api.chartnaut.com/v1/mcp`). `--write` applies it: `claude mcp add` for Claude Code, `~/.cursor/mcp.json` for Cursor, `~/.codex/config.toml` for Codex. It makes no network calls and never prints the saved key.
-
 ## 0.1.0
 
 The first public release.
@@ -42,6 +36,14 @@ The first public release.
 - `chartnaut events`: a definition's events, with `--summary`, filters, payload `--where` and CSV output.
 - `chartnaut collect`: run a definition over history, only for the part not yet covered.
 
+### Forward Insights
+
+- `chartnaut insights` lists your Forward Insights. `insights create <run> --name <name>` puts a study run on your charts, and `--dry-run` prints the preview card without saving. `insights show`, `update` and `rm` manage them. The study must publish `pin_cell`.
+
+### Connect an AI app
+
+- `chartnaut mcp install [claude|codex|cursor]` prints the setup for connecting Claude Code, Cursor or Codex to Chartnaut's MCP server (`https://api.chartnaut.com/v1/mcp`). `--write` applies it: `claude mcp add` for Claude Code, `~/.cursor/mcp.json` for Cursor, `~/.codex/config.toml` for Codex. It makes no network calls and never prints the saved key.
+
 ### Discovery
 
 - `chartnaut library search` and `library show` for your own, Chartnaut's and other people's public scripts.
@@ -51,6 +53,7 @@ The first public release.
 ### For scripts and coding agents
 
 - Fixed exit codes 0 to 5.
+- Errors print the server's `fix:` and `docs:` lines when it sends them.
 - `--json` on every command.
 - Automatic retries on busy, rate-limited and network failures, honouring `Retry-After`, with an `Idempotency-Key` on run creation and push.
 - Server-supplied links are opened only when they are `https` links to `chartnaut.com` or the configured app host.

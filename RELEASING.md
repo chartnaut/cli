@@ -19,6 +19,7 @@ reads the same manifest. The CLI is not published to npm (`package.json` is `pri
 |---|---|---|
 | `chartnaut.com/install.sh` | macOS/Linux installer | `install/install.sh` (chartnaut.com serves a copy; keep them identical) |
 | `chartnaut.com/install.ps1` | Windows installer | `install/install.ps1` (chartnaut.com serves a copy; keep them identical) |
+| `desktop-updates.chartnaut.com/cli/install.sh`, `…/cli/install.ps1` | the installers, served from R2 | `npm run publish:installers` (after any change to `install/`) |
 | `desktop-updates.chartnaut.com/cli/latest.json` | current release manifest | `publish:r2` |
 | `desktop-updates.chartnaut.com/cli/<version>/…` | binaries + pinned manifest | `publish:r2` |
 
