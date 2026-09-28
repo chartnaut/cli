@@ -114,8 +114,10 @@ The study must publish \`pin_cell\`; read \`chartnaut docs chart-pins-overview\`
 
 - \`results.declare({ id: "pin_cell", kind: "popover_layout", indexedBy: [<scope dimensions>] })\`
   (\`[]\` for one global card); scope dimensions are facts known when the event fires.
-- \`ctx.scopeEvent({ ...every scope dimension })\` in \`onEvent\`, before any outcome read or early return.
-- In \`onFinish\`, one \`ctx.popoverLayout.cell({ dims, n, blocks })\` per combination, with a true \`n\`.
+- \`export function scope(ctx)\` returns \`{ ...every scope dimension }\` from what was known when the event
+  fired, or \`null\` to leave it out; \`onEvent(ctx, scope)\` measures what happened next.
+- In \`onFinish\`, one \`ctx.popoverLayout.cell({ dims: g.scope, n: g.rows.length, blocks })\` per group of
+  \`ctx.groupByScope(ctx.collected(key))\`, so each \`n\` is the true count.
 
 Then run the study on the instrument and timeframe to chart, check
 \`chartnaut runs results <id> --keys pin_cell\`, and
