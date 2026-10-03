@@ -3,6 +3,7 @@ import type { Ctx } from './context.js';
 import { Env } from './env.js';
 import { ApiError, CliError, EXIT, exitCodeForErrorCode, formatApiError } from './errors.js';
 import { VERSION } from './version.js';
+import { plain } from './output.js';
 import { registerAccount } from './commands/account.js';
 import { registerRun } from './commands/run.js';
 import { registerScripts } from './commands/scripts.js';
@@ -73,14 +74,14 @@ export async function main(argv: string[], ctx: Ctx): Promise<number> {
     }
     if (e instanceof ApiError) {
       if (json) ctx.out(JSON.stringify({ error: e.body, ...(e.diagnostics.length ? { diagnostics: e.diagnostics } : {}) }, null, 2));
-      for (const l of formatApiError(e)) ctx.err(l);
+      for (const l of formatApiError(e)) ctx.err(plain(l));
       return exitCodeForErrorCode(e.code, e.status);
     }
     if (e instanceof CliError) {
-      ctx.err(e.message.startsWith('error:') ? e.message : `error: ${e.message}`);
+      ctx.err(plain(e.message.startsWith('error:') ? e.message : `error: ${e.message}`));
       return e.exitCode;
     }
-    ctx.err(`error: internal: ${(e as Error)?.message ?? String(e)}`);
+    ctx.err(plain(`error: internal: ${(e as Error)?.message ?? String(e)}`));
     return EXIT.RETRYABLE;
   }
 }

@@ -1,3 +1,5 @@
+import process from 'node:process';
+import { plain } from './output.js';
 import type { Ctx } from './context.js';
 
 /** Hosts a server-supplied link may point at, besides the configured app host. */
@@ -46,7 +48,8 @@ export function safeBrowserUrl(raw: unknown, env: Ctx['env'] = {}): SafeUrl {
  */
 export function browserCommand(platform: NodeJS.Platform, url: string): [string, string[]] {
   if (platform === 'darwin') return ['open', [url]];
-  if (platform === 'win32') return ['rundll32', ['url.dll,FileProtocolHandler', url]];
+  // By absolute path: Windows runs a bare name from the current directory first.
+  if (platform === 'win32') return [`${process.env.SystemRoot || 'C:\\Windows'}\\System32\\rundll32.exe`, ['url.dll,FileProtocolHandler', url]];
   return ['xdg-open', [url]];
 }
 
@@ -58,7 +61,7 @@ export function browserCommand(platform: NodeJS.Platform, url: string): [string,
 export async function openInBrowser(ctx: Ctx, raw: unknown): Promise<number | undefined> {
   const safe = safeBrowserUrl(raw, ctx.env);
   if (!safe.ok) {
-    ctx.err(`warning: not opening ${String(raw)} in a browser: ${safe.reason}`);
+    ctx.err(plain(`warning: not opening ${String(raw)} in a browser: ${safe.reason}`));
     return undefined;
   }
   const [bin, args] = browserCommand(ctx.platform, safe.url);

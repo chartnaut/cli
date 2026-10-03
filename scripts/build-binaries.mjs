@@ -17,6 +17,7 @@
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -81,7 +82,14 @@ for (const platform of only) {
     process.exit(1);
   }
   const file = `chartnaut-${platform}${platform.startsWith('windows') ? '.exe' : ''}`;
-  const r = spawnSync('npx', [...bunArgs, 'build', '--compile', '--minify', `--target=${target}`, entry, '--outfile', path.join(out, file)], {
+  const r = spawnSync('npx', [
+    ...bunArgs, 'build', '--compile', '--minify',
+    // A standalone Bun binary loads .env, bunfig.toml (whose `preload` runs code), tsconfig.json and
+    // package.json from the directory it runs in, by default. The CLI runs inside users' repos,
+    // and the installers run it in whatever directory `curl | sh` was typed in: a hostile repo
+    // could run code, swap the API host and take the key. Off, all of them.
+    '--no-compile-autoload-dotenv', '--no-compile-autoload-bunfig',
+    '--no-compile-autoload-tsconfig', '--no-compile-autoload-package-json', `--target=${target}`, entry, '--outfile', path.join(out, file)], {
     cwd: root,
     stdio: ['ignore', 'ignore', 'inherit'],
   });
@@ -94,6 +102,27 @@ for (const platform of only) {
   assets[platform] = { url: `${base}/${version}/${file}`, sha256, size: buf.length };
   sums.push(`${sha256}  ${file}`);
   console.log(`${platform.padEnd(18)} ${file.padEnd(32)} ${(buf.length / 1e6).toFixed(1)} MB`);
+}
+
+// The binary for this machine must ignore the directory it runs in: a bunfig.toml preload must not
+// run, and a .env must not change the API host. Refuse to write a manifest for a build that does.
+const hostPlatform = { 'darwin-arm64': 'darwin-arm64', 'darwin-x64': 'darwin-x64', 'linux-x64': 'linux-x64', 'linux-arm64': 'linux-arm64', 'win32-x64': 'windows-x64' }[`${process.platform}-${process.arch}`];
+if (hostPlatform && assets[hostPlatform]) {
+  const bin = path.join(out, `chartnaut-${hostPlatform}${hostPlatform.startsWith('windows') ? '.exe' : ''}`);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cn-hostile-'));
+  fs.writeFileSync(path.join(dir, 'bunfig.toml'), 'preload = ["./preload.js"]\n');
+  fs.writeFileSync(path.join(dir, 'preload.js'), 'require("fs").writeFileSync("PRELOADED", "x")\n');
+  fs.writeFileSync(path.join(dir, '.env'), 'CHARTNAUT_API_URL=https://hostile.example/v1\n');
+  const env = { ...process.env, HOME: dir, USERPROFILE: dir };
+  delete env.CHARTNAUT_API_URL;
+  const r = spawnSync(bin, ['mcp', 'install', 'cursor'], { cwd: dir, env, encoding: 'utf8' });
+  const leaked = fs.existsSync(path.join(dir, 'PRELOADED')) || /hostile\.example/.test(`${r.stdout}${r.stderr}`);
+  fs.rmSync(dir, { recursive: true, force: true });
+  if (leaked) {
+    console.error(`refusing to release: ${path.basename(bin)} loads bunfig.toml or .env from the directory it runs in`);
+    process.exit(1);
+  }
+  console.log(`checked: ${path.basename(bin)} ignores bunfig.toml and .env in its working directory`);
 }
 
 fs.writeFileSync(path.join(out, 'SHA256SUMS'), sums.join('\n') + '\n');

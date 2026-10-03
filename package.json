@@ -1,6 +1,6 @@
 {
   "name": "chartnaut",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Command-line client for Chartnaut: write, validate, run and save indicators, definitions and studies from your terminal or a coding agent. Scripts run on Chartnaut servers. Distributed as standalone binaries, not on npm.",
   "keywords": [
     "chartnaut",

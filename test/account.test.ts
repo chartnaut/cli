@@ -82,7 +82,7 @@ test('login on Windows opens the page through rundll32, not cmd', async () => {
   );
   h.ctx.platform = 'win32';
   assert.equal(await h.run('login'), 0, h.err());
-  assert.deepEqual(h.execs[0], { cmd: 'rundll32', args: ['url.dll,FileProtocolHandler', deviceStart.verification_uri_complete] });
+  assert.deepEqual(h.execs[0], { cmd: `${process.env.SystemRoot || 'C:\\Windows'}\\System32\\rundll32.exe`, args: ['url.dll,FileProtocolHandler', deviceStart.verification_uri_complete] });
 });
 
 test('login --no-browser prints the link and opens nothing', async () => {

@@ -226,7 +226,9 @@ export function registerScripts(program: Command, env: Env): void {
       const files: ScriptFile[] = script?.files ?? [];
       if (!files.length) throw new CliError(`error: not_found: ${ref} returned no source (only your own scripts can be pulled)`, EXIT.USAGE);
       const kind: Kind = parseKind(script.kind);
-      const slug = script.slug ?? slugOf(ref);
+      // The slug names a folder: never trust one from the server that is not a plain slug.
+      const slug = [script.slug, slugOf(ref)].find((s) => typeof s === 'string' && SLUG_RE.test(s));
+      if (!slug) throw new CliError(`error: invalid_request: ${ref} has no valid slug to pull into`, EXIT.USAGE);
       const root = findProjectRoot(env.ctx.cwd) ?? env.ctx.cwd;
       const dir = opts.dir ? path.resolve(env.ctx.cwd, opts.dir) : findLocalScript(env.ctx.cwd, slug) ?? path.join(root, KIND_DIR[kind], slug);
       const entry = files.find((f) => f.entry)?.path ?? files[0]!.path;

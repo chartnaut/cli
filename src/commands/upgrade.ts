@@ -5,6 +5,7 @@ import type { Command } from 'commander';
 import type { Env } from '../env.js';
 import { CliError, EXIT } from '../errors.js';
 import { VERSION } from '../version.js';
+import { checkedUrl } from '../config.js';
 
 /** Where the release manifest lives; the install scripts read the same file. */
 export const DEFAULT_DOWNLOAD_URL = 'https://desktop-updates.chartnaut.com/cli';
@@ -60,7 +61,7 @@ export function registerUpgrade(program: Command, env: Env): void {
     .description('update chartnaut to the latest version')
     .option('--check', 'only report whether a newer version exists')
     .action(async (opts: { check?: boolean }, cmd: Command) => {
-      const base = (env.ctx.env.CHARTNAUT_DOWNLOAD_URL || DEFAULT_DOWNLOAD_URL).replace(/\/+$/, '');
+      const base = env.ctx.env.CHARTNAUT_DOWNLOAD_URL ? checkedUrl(env.ctx.env.CHARTNAUT_DOWNLOAD_URL, 'CHARTNAUT_DOWNLOAD_URL') : DEFAULT_DOWNLOAD_URL;
       let manifest: ReleaseManifest;
       try {
         const r = await env.ctx.fetch(`${base}/latest.json`);

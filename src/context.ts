@@ -1,4 +1,6 @@
 import os from 'node:os';
+import fs from 'node:fs';
+import path from 'node:path';
 import process from 'node:process';
 import { spawn } from 'node:child_process';
 
@@ -84,10 +86,30 @@ async function readSecret(prompt: string): Promise<string> {
 const CMD_UNSAFE = /["%^&|<>\r\n]/;
 
 /**
- * Starts a program and resolves its exit code (127 when it cannot be started). On Windows,
- * tools installed by npm (such as Claude Code's `claude`) are `.cmd` shims, which Node only
- * starts through a shell: when the plain name is not found, retry `<cmd>.cmd` through cmd.exe
- * with every argument double-quoted, refusing any argument cmd.exe would interpret.
+ * The absolute path of a Windows program found on PATH, never in the current directory: Windows
+ * looks in the current directory first for a bare name, so a cloned repo carrying `claude.exe`
+ * would otherwise run instead of the real one. `.exe` before `.cmd`.
+ */
+export function windowsProgramOnPath(cmd: string, env: NodeJS.ProcessEnv = process.env): string | undefined {
+  const dirs = (env.Path ?? env.PATH ?? '').split(';').filter((d) => d && path.win32.isAbsolute(d));
+  for (const dir of dirs) {
+    for (const ext of ['.exe', '.cmd']) {
+      const full = path.win32.join(dir, cmd + ext);
+      try {
+        if (fs.statSync(full).isFile()) return full;
+      } catch {
+        // not here
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Starts a program and resolves its exit code (127 when it cannot be started). On Windows the
+ * program is resolved on PATH first (windowsProgramOnPath). Tools installed by npm (such as
+ * Claude Code's `claude`) are `.cmd` shims, which Node only starts through a shell: those run
+ * through cmd.exe with every argument double-quoted, refusing any argument cmd.exe would interpret.
  */
 export function execCommand(cmd: string, args: string[], platform: NodeJS.Platform): Promise<number> {
   const run = (c: string, a: string[], shell: boolean) =>
@@ -96,9 +118,12 @@ export function execCommand(cmd: string, args: string[], platform: NodeJS.Platfo
       child.on('error', (e: NodeJS.ErrnoException) => resolve(e.code === 'ENOENT' || e.code === 'EINVAL' ? 'missing' : 127));
       child.on('exit', (code) => resolve(code ?? 1));
     });
-  return run(cmd, args, false).then((r) => {
-    if (r !== 'missing') return r;
-    if (platform !== 'win32' || /[\\/.]/.test(cmd) || args.some((a) => CMD_UNSAFE.test(a))) return 127;
-    return run(`${cmd}.cmd`, args.map((a) => `"${a}"`), true).then((r2) => (r2 === 'missing' ? 127 : r2));
-  });
+  const done = (r: number | 'missing') => (r === 'missing' ? 127 : r);
+  if (platform !== 'win32') return run(cmd, args, false).then(done);
+  if (/[\\/.]/.test(cmd)) return Promise.resolve(127);
+  const full = windowsProgramOnPath(cmd);
+  if (!full) return Promise.resolve(127);
+  if (full.toLowerCase().endsWith('.exe')) return run(full, args, false).then(done);
+  if (args.some((a) => CMD_UNSAFE.test(a)) || CMD_UNSAFE.test(full)) return Promise.resolve(127);
+  return run(`"${full}"`, args.map((a) => `"${a}"`), true).then(done);
 }

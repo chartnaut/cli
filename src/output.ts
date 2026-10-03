@@ -10,10 +10,19 @@ export function table(headers: string[], rows: unknown[][]): string {
   return [line(headers.map((h) => h.toUpperCase())), ...cells.map(line)].join('\n');
 }
 
+/**
+ * Text for a terminal: drops C0 controls except tab and newline, DEL and C1 controls, so text from
+ * the server (another user's script description, a run's console) cannot carry escape sequences
+ * that rewrite the screen, fake a link or set the clipboard. --json output is left exact.
+ */
+export function plain(s: string): string {
+  return s.replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g, '');
+}
+
 export function cell(v: unknown): string {
   if (v === undefined || v === null) return '-';
   if (typeof v === 'number') return fmtNum(v);
-  if (typeof v === 'string') return v;
+  if (typeof v === 'string') return plain(v);
   if (typeof v === 'boolean') return v ? 'yes' : 'no';
   return JSON.stringify(v);
 }

@@ -2,6 +2,16 @@
 
 Notable changes to the Chartnaut CLI. Versions follow [Semantic Versioning](https://semver.org/).
 
+## 0.1.1
+
+Security fixes. Upgrade with `chartnaut upgrade`.
+
+- The binaries no longer read `.env`, `bunfig.toml`, `tsconfig.json` or `package.json` from the directory they run in. In 0.1.0, running any command (or the installer) inside a folder with a hostile `bunfig.toml` ran that folder's code, and a hostile `.env` could point the CLI, and your key, at another server.
+- `CHARTNAUT_API_URL` and `CHARTNAUT_DOWNLOAD_URL` must be https (plain http only to localhost).
+- On Windows, `claude` and the browser opener are started by their full path, never from the current directory.
+- `pull` refuses a slug from the server that is not a plain slug, so it cannot write outside your project.
+- Text from the server is printed without terminal control characters, so it cannot rewrite the screen, fake links or set the clipboard. `--json` output is unchanged.
+
 ## 0.1.0
 
 The first public release.

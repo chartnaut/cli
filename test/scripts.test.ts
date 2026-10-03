@@ -245,3 +245,10 @@ test('init replaces a block written with the pre-0.1.0 marker instead of adding 
   assert.match(out, /# Mine[\s\S]*new guide/);
   assert.doesNotMatch(out, /old guide/);
 });
+
+test('pull refuses a server slug that is not a plain slug', async () => {
+  const h = harness({ 'GET /scripts/my-x': { json: { kind: 'indicator', slug: '../../../.config/evil', version: 1, files: [{ path: 'main.ts', code: 'x', entry: true }] } } });
+  const code = await h.run('pull', 'my-x');
+  assert.equal(code, 0, h.err());
+  assert.match(h.out(), /pulled my-x@1 → indicators\/my-x/);
+});

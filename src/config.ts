@@ -6,8 +6,29 @@ import { CliError, EXIT } from './errors.js';
 export const DEFAULT_API_URL = 'https://api.chartnaut.com/v1';
 export const TOKEN_PAGE_URL = 'https://terminal.chartnaut.com/morpheus/settings/developers';
 
+/**
+ * An override URL the CLI may send the key to, or download itself from: https anywhere, plain
+ * http only to this machine (the tests' fake API). Anything else is refused, so a stray
+ * environment variable cannot send the key over the network in clear text.
+ */
+export function checkedUrl(raw: string, name: string): string {
+  const v = raw.trim().replace(/\/+$/, '');
+  let u: URL;
+  try {
+    u = new URL(v);
+  } catch {
+    throw new CliError(`error: invalid_request: ${name} is not a URL`, EXIT.USAGE);
+  }
+  const loopback = u.hostname === 'localhost' || u.hostname === '127.0.0.1' || u.hostname === '[::1]';
+  if (u.username || u.password || !(u.protocol === 'https:' || (u.protocol === 'http:' && loopback))) {
+    throw new CliError(`error: invalid_request: ${name} must be an https URL`, EXIT.USAGE);
+  }
+  return v;
+}
+
 export function apiUrl(ctx: Ctx): string {
-  return (ctx.env.CHARTNAUT_API_URL || DEFAULT_API_URL).replace(/\/+$/, '');
+  const raw = ctx.env.CHARTNAUT_API_URL;
+  return raw ? checkedUrl(raw, 'CHARTNAUT_API_URL') : DEFAULT_API_URL;
 }
 
 export function credentialsPath(ctx: Ctx): string {
