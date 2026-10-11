@@ -3,6 +3,7 @@ import type { Ctx } from './context.js';
 import { Env } from './env.js';
 import { ApiError, CliError, EXIT, exitCodeForErrorCode, formatApiError } from './errors.js';
 import { VERSION } from './version.js';
+import { savedKeyWarning } from './config.js';
 import { plain } from './output.js';
 import { registerAccount } from './commands/account.js';
 import { registerRun } from './commands/run.js';
@@ -63,6 +64,12 @@ export async function main(argv: string[], ctx: Ctx): Promise<number> {
   const env = new Env(ctx);
   const program = buildProgram(env);
   const json = argv.includes('--json');
+  const command = argv.find((a) => !a.startsWith('-'));
+  // login renews the key and logout drops it, so neither needs telling to run login.
+  if (command && !NO_EXPIRY_WARNING.has(command)) {
+    const warning = savedKeyWarning(ctx);
+    if (warning) ctx.err(warning);
+  }
   try {
     await program.parseAsync(argv, { from: 'user' });
     return env.code;
@@ -85,6 +92,8 @@ export async function main(argv: string[], ctx: Ctx): Promise<number> {
     return EXIT.RETRYABLE;
   }
 }
+
+const NO_EXPIRY_WARNING = new Set(['login', 'logout', 'help']);
 
 /** `chartnaut -v` / `chartnaut --version` (with any global flags): the flag comes before any subcommand. */
 export function asksForVersion(argv: string[]): boolean {

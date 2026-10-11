@@ -50,7 +50,7 @@ describe('sign-in: device flow, --token, logout', () => {
     assert.equal(who.code, 0, who.stderr);
     assert.match(who.stdout, /user:\s+jane/);
     assert.match(who.stdout, /plan:\s+pro/);
-    assert.match(who.stdout, /token:\s+CLI on test-machine/);
+    assert.match(who.stdout, /^key:    CLI on test-machine · never expires$/m);
     assert.match(who.stdout, /scopes:\s+scripts:read scripts:write runs:write/);
     assert.match(who.stdout, re(`api:    ${w.api.url}`));
     assert.equal(w.api.requests.at(-1)!.headers.authorization, `Bearer ${TOKEN}`);
@@ -240,6 +240,14 @@ describe('the program itself', () => {
       'open', 'pull', 'push', 'run', 'runs', 'upgrade', 'usage', 'validate', 'versions', 'whoami',
     ]);
     assert.equal(w.api.requests.length, 0);
+
+    const lib = await w.cli(['library', '--help']);
+    assert.equal(lib.code, 0, lib.stderr);
+    const libSection = lib.stdout.split(/^Commands:$/m)[1] ?? '';
+    const subs = [...libSection.matchAll(/^ {2}(\S+)/gm)].map((m) => m[1]!.split('|')[0]).sort();
+    assert.deepEqual(subs, ['add', 'help', 'needs', 'remove', 'search', 'show']);
+    assert.match(libSection, /^ {2}needs\|requirements\b/m, 'needs is also called requirements');
+    assert.equal(w.api.requests.length, 0);
   });
 
   it('webhooks is not a command', async () => {
@@ -270,5 +278,70 @@ describe('the program itself', () => {
     assert.equal(up.code, 0, up.stderr);
     assert.match(up.stdout, /This copy runs from source/);
     assert.deepEqual(w.api.requests.map((q) => q.path), ['/dl/latest.json', '/dl/latest.json', '/dl/latest.json'], 'no binary is downloaded');
+  });
+});
+
+describe('key expiry: login --expires, whoami, the warning, an expired key', () => {
+  // No CHARTNAUT_TOKEN: the saved login, and its cached expiry, are what count.
+  let w: World;
+  before(async () => (w = await world()));
+  after(() => w.dispose());
+  beforeEach(() => w.api.reset());
+
+  const DAY = 86_400_000;
+  const iso = (ms: number) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+  const meExpiring = (at: number) => ({ ...ME, token: { ...ME.token, expires_at: iso(at) } });
+
+  it('login --expires 30d asks for 30 days and prints the date the approval page settled on', async () => {
+    const at = Date.now() + 7 * DAY;
+    w.api.on('POST /auth/device', { json: { ...DEVICE_START, expires_in_days: 30 } });
+    // The approver shortened it to 7 days.
+    w.api.on('POST /auth/token', { json: { token: TOKEN, name: 'CLI on test-machine', expires_at: iso(at), expires_in_days: 7 } });
+    w.api.on('GET /me', { json: meExpiring(at) });
+    const r = await w.cli(['login', '--expires', '30d']);
+    assert.equal(r.code, 0, r.stderr);
+    assert.equal(w.api.calls('POST /auth/device')[0]!.body.expires_in_days, 30);
+    assert.equal(r.stdout.trim(), `Signed in as jane. Key expires on ${day(at)} (7 days).`);
+    assert.doesNotMatch(r.stdout + r.stderr, re(TOKEN));
+    assert.equal(readJson(credentials(w)).expires_at, iso(at));
+  });
+
+  it('every command then warns once on stderr, with no extra request; whoami shows the date', async () => {
+    const at = Date.parse(readJson(credentials(w)).expires_at);
+    w.api.on('GET /me', { json: meExpiring(at) });
+    const r = await w.cli(['whoami']);
+    assert.equal(r.code, 0, r.stderr);
+    assert.equal(r.stderr.trim(), `warning: your Chartnaut key expires on ${day(at)}; run chartnaut login to renew.`);
+    assert.match(r.stdout, re(`key:    CLI on test-machine · expires ${day(at)}`));
+    assert.deepEqual(w.api.requests.map((q) => `${q.method} ${q.path}`), ['GET /me']);
+  });
+
+  it('a bad --expires is refused before any request', async () => {
+    const r = await w.cli(['login', '--force', '--expires', '365d']);
+    assert.equal(r.code, 4);
+    assert.match(r.stderr, /error: invalid_request: --expires must be 7d, 30d or 90d/);
+    assert.equal(w.api.requests.length, 0);
+  });
+
+  it('an expired key: "your key expired. Run chartnaut login." and exit 3', async () => {
+    w.api.on('GET /me', apiError(401, 'unauthorized', 'API token expired.'));
+    const r = await w.cli(['whoami']);
+    assert.equal(r.code, 3);
+    assert.match(r.stderr, /^error: unauthorized: your key expired\. Run chartnaut login\.$/m);
+  });
+
+  it('login --expires 90d after a far expiry: no warning', async () => {
+    const at = Date.now() + 90 * DAY;
+    w.api.on('POST /auth/device', { json: { ...DEVICE_START, expires_in_days: 90 } });
+    w.api.on('POST /auth/token', { json: { token: NEW_TOKEN, name: 'CLI on test-machine', expires_at: iso(at), expires_in_days: 90 } });
+    w.api.on('GET /me', (req) => (req.headers.authorization === `Bearer ${NEW_TOKEN}` ? { json: meExpiring(at) } : apiError(401, 'unauthorized', 'API token expired.')));
+    w.api.on('POST /auth/revoke', { status: 204 });
+    const r = await w.cli(['login', '--expires', '90']);
+    assert.equal(r.code, 0, r.stderr);
+    assert.equal(r.stdout.trim(), `Signed in as jane. Key expires on ${day(at)} (90 days).`);
+    const who = await w.cli(['whoami']);
+    assert.equal(who.code, 0, who.stderr);
+    assert.equal(who.stderr, '');
   });
 });

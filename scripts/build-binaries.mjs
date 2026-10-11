@@ -3,13 +3,18 @@
  * Builds standalone `chartnaut` executables for every platform (no Node needed to run them) and
  * the manifest the install scripts and `chartnaut upgrade` read.
  *
- *   npm run build:binaries                     # all targets into release/
+ *   npm run build:binaries                     # all targets into release/, stable channel
+ *   CHARTNAUT_CHANNEL=unstable npm run build:binaries     # or: npm run build:binaries -- --channel unstable
  *   CHARTNAUT_RELEASE_BASE=https://… npm run build:binaries
+ *
+ * The channel decides the URLs inside the manifest: stable under <base>/<version>/, unstable under
+ * <base>/unstable/<version>/ (see scripts/release-lib.mjs). The manifest records its channel and
+ * publish:r2 refuses to publish it to another one.
  *
  * Output (release/):
  *   chartnaut-<platform>[.exe]   one per target below
  *   SHA256SUMS                   `sha256  file` lines
- *   latest.json, manifest.json   { version, bun, assets: { <platform>: { url, sha256, size } } }
+ *   latest.json, manifest.json   { version, channel, bun, assets: { <platform>: { url, sha256, size } } }
  *
  * Publish with `npm run publish:r2` (R2 behind desktop-updates.chartnaut.com, the install
  * scripts' default). Moving the binaries elsewhere only changes the URLs inside latest.json.
@@ -20,6 +25,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { channelFrom, checkManifest, releaseBase, renderManifest } from './release-lib.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
@@ -47,7 +53,9 @@ const TARGETS = {
 const BUN_VERSION = '1.4.2';
 const bunArgs = ['--yes', `bun@${BUN_VERSION}`];
 
-const base = (process.env.CHARTNAUT_RELEASE_BASE ?? 'https://desktop-updates.chartnaut.com/cli').replace(/\/+$/, '');
+const channel = channelFrom(process.argv.slice(2), process.env);
+const base = releaseBase(channel, process.env);
+console.log(`channel ${channel}: ${base}`);
 const only = process.env.CHARTNAUT_TARGETS ? process.env.CHARTNAUT_TARGETS.split(',') : Object.keys(TARGETS);
 const out = path.join(root, 'release');
 fs.rmSync(out, { recursive: true, force: true });
@@ -126,10 +134,10 @@ if (hostPlatform && assets[hostPlatform]) {
 }
 
 fs.writeFileSync(path.join(out, 'SHA256SUMS'), sums.join('\n') + '\n');
-// One asset per line on purpose: install.sh reads this with grep/sed, no jq needed.
-const lines = Object.entries(assets).map(([k, v]) => `    "${k}": ${JSON.stringify(v)}`);
-const manifest = `{\n  "version": "${version}",\n  "bun": "${bunVersion}",\n  "assets": {\n${lines.join(',\n')}\n  }\n}\n`;
+const manifest = renderManifest({ version, bun: bunVersion, channel, assets });
+checkManifest(JSON.parse(manifest), channel, out, { paths: !process.env.CHARTNAUT_RELEASE_BASE });
 fs.writeFileSync(path.join(out, 'latest.json'), manifest);
 // The same manifest pinned to this version, for CHARTNAUT_VERSION installs: <base>/<version>/manifest.json.
 fs.writeFileSync(path.join(out, 'manifest.json'), manifest);
-console.log(`\nnext: npm run publish:r2  (latest.json → ${base}/latest.json, binaries → ${base}/${version}/)`);
+const flag = channel === 'stable' ? '' : ` -- --channel ${channel}`;
+console.log(`\nnext: npm run publish:r2${flag}  (latest.json → ${base}/latest.json, binaries → ${base}/${version}/)`);

@@ -76,6 +76,19 @@ Follow these steps in order for every change.
    version. On a version conflict, \`chartnaut pull <slug>\` and re-apply, or
    \`--force\` only if the user agrees to overwrite the app's version.
 
+## Other people's scripts
+
+Another author's script (\`author/slug\`) runs only once it is in the user's library,
+exactly as in the app. A run of one that is not there fails with \`not_in_library\` and
+prints the command that adds it.
+
+- \`chartnaut library needs <author/slug>\` lists what adding it would also add. It changes nothing.
+- **Ask the user before adding anything to their library.** Show them that list, and run
+  \`chartnaut library add <author/slug> --yes\` only after they agree. Never pass \`--yes\` on your own.
+- A study's definitions follow the same rule: add each one the error names.
+- \`not_shared\` means it uses scripts that are not shared with the user: it cannot be added. Tell the user.
+- \`chartnaut library remove <author/slug>\` takes it out again; the scripts added with it stay.
+
 ## Getting the full results
 
 The run summary is a digest. Fetch the rest by run id (every \`run\` prints it; \`--json\` gives it as \`id\`):

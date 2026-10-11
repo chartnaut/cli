@@ -2,7 +2,19 @@ import os from 'node:os';
 import { Command, Option } from 'commander';
 import type { Env } from '../env.js';
 import { ApiError, CliError, EXIT } from '../errors.js';
-import { TOKEN_PAGE_URL, apiUrl, credentialsPath, deleteToken, loadSavedToken, loadToken, saveToken } from '../config.js';
+import {
+  apiUrl,
+  credentialsPath,
+  daysUntil,
+  deleteToken,
+  expiryDate,
+  expiryWarning,
+  loadSavedToken,
+  loadToken,
+  saveToken,
+  updateSavedExpiry,
+} from '../config.js';
+import { registerLibraryChanges } from './library.js';
 import { cell, shortTime, table } from '../output.js';
 import { KINDS } from '../project.js';
 import { openInBrowser, safeBrowserUrl } from '../browser.js';
@@ -12,32 +24,45 @@ export function registerAccount(program: Command, env: Env): void {
     .command('login')
     .description('sign in through your browser (--token for CI)')
     .option('--token <token>', 'save this API key instead of signing in with the browser (for CI)')
+    .option('--expires <days>', 'how long the new key lasts: 7d, 30d or 90d (default 90d; the approval page can shorten it)')
     .option('--force', 'sign in again, replacing the current login')
     .option('--no-browser', 'print the link instead of opening it')
-    .action(async (opts: { token?: string; force?: boolean; browser?: boolean }, cmd: Command) => {
+    .action(async (opts: { token?: string; expires?: string; force?: boolean; browser?: boolean }, cmd: Command) => {
+      const expiresInDays = opts.expires === undefined ? DEFAULT_EXPIRES_DAYS : parseExpires(opts.expires);
+      if (opts.token !== undefined && opts.expires !== undefined) {
+        throw new CliError('error: invalid_request: --expires applies to browser sign-in; a key passed with --token keeps the expiry it was created with', EXIT.USAGE);
+      }
       const saved = loadSavedToken(env.ctx);
       if (saved && !opts.force) {
         try {
           const me = (await env.client.get<any>('/me', { token: saved, retries: 0 })).data;
-          if (env.isJson(cmd)) return env.printJson({ already_signed_in: true, ...me });
-          env.out(`Already signed in as ${me?.user ?? '?'}. Use --force to switch.`);
-          return;
+          const expiresAt = me?.token?.expires_at;
+          if (!expiryWarning(expiresAt)) {
+            updateSavedExpiry(env.ctx, saved, expiresAt);
+            if (env.isJson(cmd)) return env.printJson({ already_signed_in: true, ...me });
+            env.out(`Already signed in as ${me?.user ?? '?'}. Use --force to switch.`);
+            return;
+          }
+          // The saved key runs out within days: sign in again to renew it.
+          env.err(`Your key expires on ${expiryDate(expiresAt)}; signing in again to renew it.`);
         } catch (e) {
           if (!(e instanceof ApiError) || e.status !== 401) throw e;
           // The saved key no longer works (revoked or expired): sign in again.
         }
       }
 
-      const token = opts.token?.trim() || (await browserSignIn(env, opts.browser !== false));
+      let signIn: DeviceToken | undefined;
+      const token = opts.token?.trim() || (signIn = await browserSignIn(env, opts.browser !== false, expiresInDays)).token;
       if (!token) throw new CliError('error: invalid_request: no token given', EXIT.USAGE);
       const me = (await env.client.get<any>('/me', { token })).data;
       if (saved && saved !== token) {
         // Replacing a login: retire the key it used rather than leave it live.
         await env.client.post('/auth/revoke', { token: saved, retries: 0 }).catch(() => undefined);
       }
-      saveToken(env.ctx, token);
+      // /me is the authority on the key's expiry; the sign-in response stands in for an older server.
+      saveToken(env.ctx, token, me?.token && 'expires_at' in me.token ? me.token.expires_at : signIn?.expires_at);
       if (env.isJson(cmd)) return env.printJson(me);
-      env.out(`Signed in as ${me?.user ?? '?'}.`);
+      env.out(`Signed in as ${me?.user ?? '?'}.${signIn ? keyExpiryText(signIn, me?.token?.expires_at) : ''}`);
       if (env.ctx.env.CHARTNAUT_TOKEN) env.err('Note: CHARTNAUT_TOKEN is set and overrides this login.');
     });
 
@@ -69,8 +94,13 @@ export function registerAccount(program: Command, env: Env): void {
       env.out(`user:   ${me?.user ?? '-'}`);
       env.out(`plan:   ${me?.plan ?? '-'}`);
       if (me?.token) {
-        env.out(`token:  ${me.token.name ?? '-'}${me.token.expires_at ? ` (expires ${shortTime(me.token.expires_at)})` : ''}`);
+        const date = expiryDate(me.token.expires_at);
+        const expiry = date ? ` · expires ${date}` : me.token.expires_at === null ? ' · never expires' : '';
+        env.out(`key:    ${me.token.name ?? '-'}${expiry}`);
         env.out(`scopes: ${(me.token.scopes ?? []).join(' ') || '-'}`);
+        // Keeps the cached expiry behind the warning every command prints in step with the server.
+        const used = loadToken(env.ctx);
+        if (used) updateSavedExpiry(env.ctx, used, me.token.expires_at);
       }
       env.out(`api:    ${apiUrl(env.ctx)}`);
     });
@@ -89,7 +119,9 @@ export function registerAccount(program: Command, env: Env): void {
       if (u?.memory_bars !== undefined) env.out(`memory bars: ${u.memory_bars}`);
     });
 
-  const library = program.command('library').description("search every script you can use: yours, Chartnaut's and the community's (never their source)");
+  const library = program
+    .command('library')
+    .description("find scripts you can use (yours, Chartnaut's and the community's, never their source), and add other authors' scripts to your library");
   library
     .command('search')
     .argument('[q]', 'search text')
@@ -151,6 +183,8 @@ export function registerAccount(program: Command, env: Env): void {
       if (s?.app_url) env.out(`app: ${s.app_url}`);
     });
 
+  registerLibraryChanges(library, env);
+
   program
     .command('instruments')
     .description('instruments you can run on, with coverage')
@@ -195,13 +229,44 @@ export function registerAccount(program: Command, env: Env): void {
     });
 }
 
+/** Key lifetimes `login --expires` offers; the server refuses anything else. */
+export const EXPIRES_DAYS = [7, 30, 90] as const;
+export const DEFAULT_EXPIRES_DAYS = 90;
+
+/** `--expires 7d|30d|90d` (or the bare number) as days. */
+export function parseExpires(v: string): number {
+  const m = /^(\d+)d?$/.exec(v.trim().toLowerCase());
+  const days = m ? Number(m[1]) : NaN;
+  if (!(EXPIRES_DAYS as readonly number[]).includes(days)) {
+    throw new CliError(`error: invalid_request: --expires must be 7d, 30d or 90d, not "${v}"`, EXIT.USAGE);
+  }
+  return days;
+}
+
+/** POST /auth/token on approval. expires_at may be earlier than asked: the approval page can shorten it. */
+export interface DeviceToken {
+  token: string;
+  name?: string;
+  expires_at?: string | null;
+  expires_in_days?: number;
+}
+
+/** " Key expires on 2027-01-09 (90 days)." after a browser sign-in; empty when the server did not say. */
+export function keyExpiryText(t: DeviceToken, meExpiresAt?: string | null): string {
+  const at = t.expires_at ?? meExpiresAt;
+  const date = expiryDate(at);
+  if (!date) return t.expires_at === null ? ' The key never expires.' : '';
+  const days = typeof t.expires_in_days === 'number' ? t.expires_in_days : daysUntil(at!);
+  return ` Key expires on ${date} (${days} ${days === 1 ? 'day' : 'days'}).`;
+}
+
 /**
  * Browser sign-in (device authorization grant): show a code, open the approval page, poll until the
  * person approves in Chartnaut, and return the new API key.
  */
-export async function browserSignIn(env: Env, openBrowser: boolean): Promise<string> {
+export async function browserSignIn(env: Env, openBrowser: boolean, expiresInDays: number = DEFAULT_EXPIRES_DAYS): Promise<DeviceToken> {
   const start = (
-    await env.client.post<any>('/auth/device', { noAuth: true, body: { client_name: os.hostname() } })
+    await env.client.post<any>('/auth/device', { noAuth: true, body: { client_name: os.hostname(), expires_in_days: expiresInDays } })
   ).data as { device_code: string; user_code: string; verification_uri: string; verification_uri_complete: string; expires_in: number; interval: number };
 
   // The link comes from the server: only a checked https Chartnaut link is handed to the OS.
@@ -220,7 +285,7 @@ export async function browserSignIn(env: Env, openBrowser: boolean): Promise<str
       body: JSON.stringify({ device_code: start.device_code }),
     });
     const body = (await r.json().catch(() => ({}))) as any;
-    if (r.ok && body.token) return body.token as string;
+    if (r.ok && body.token) return body as DeviceToken;
     switch (body?.error?.code) {
       case 'authorization_pending':
         continue;

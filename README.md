@@ -49,7 +49,7 @@ Both install one self-contained executable, with no Node or other runtime needed
 
 ```
 $ chartnaut --version
-0.1.0
+0.2.0
 ```
 
 | Installer variable | Does |
@@ -57,6 +57,7 @@ $ chartnaut --version
 | `CHARTNAUT_VERSION` | Installs this version instead of the latest |
 | `CHARTNAUT_INSTALL` | Installs under this folder instead. The program goes in its `bin` folder |
 | `CHARTNAUT_NO_MODIFY_PATH=1` | Leaves your PATH alone |
+| `CHARTNAUT_DOWNLOAD_URL` | Where the manifest and builds come from. `https://desktop-updates.chartnaut.com/cli/unstable` installs the release candidate being tested |
 
 On macOS and Linux, put a variable before `sh`: `curl -fsSL https://chartnaut.com/install.sh | CHARTNAUT_VERSION=0.1.0 sh`. Updating, uninstalling and install errors are on [Install](https://docs.chartnaut.com/cli/install/).
 
@@ -70,7 +71,9 @@ Opening your browser… (or go to https://terminal.chartnaut.com/morpheus/cli-au
 Code: KTRW-BHXM
 ```
 
-Check that the code in the browser matches the one in your terminal, then click **Connect**. The terminal prints `Signed in as <you>.` The code works for 10 minutes. Over SSH, `chartnaut login --no-browser` prints the link to open on any device where you are signed in. [Sign in](https://docs.chartnaut.com/cli/sign-in/)
+Check that the code in the browser matches the one in your terminal, then click **Connect**. The terminal prints `Signed in as <you>. Key expires on <date> (90 days).` The code works for 10 minutes.
+
+The key lasts 90 days. `chartnaut login --expires 7d` (or `30d`) asks for a shorter one, and the approval page can shorten it further. From 7 days before it runs out, every command prints `warning: your Chartnaut key expires on <date>; run chartnaut login to renew.` on stderr; `chartnaut login` then signs in again and revokes the old key. `chartnaut whoami` shows the date. Over SSH, `chartnaut login --no-browser` prints the link to open on any device where you are signed in. [Sign in](https://docs.chartnaut.com/cli/sign-in/)
 
 For CI, create a key on the [Developers page](https://terminal.chartnaut.com/morpheus/settings/developers) and either save it with `chartnaut login --token cn_live_…` or export it as `CHARTNAUT_TOKEN`. [API keys](https://docs.chartnaut.com/cli/api-keys/)
 
@@ -220,7 +223,7 @@ A saved script is named by a ref.
 |---|---|
 | `orb-break` | Your script, latest version |
 | `orb-break@3` | Your script, version 3 |
-| `jane/orb-break` | Another author's public script |
+| `jane/orb-break` | Another author's public script. Add it to your library first: `chartnaut library add jane/orb-break` |
 | `chartnaut/rsi` | A Chartnaut built-in |
 | `me/orb-break` | Your own script, in `library show` |
 
@@ -262,9 +265,9 @@ Pass exactly one of `--last`, `--bars` or `--from`.
 
 | Command | Does | Main flags |
 |---|---|---|
-| `chartnaut login` | Signs in through your browser and saves a key named *CLI on* your computer's name | `--token <token>` saves an existing key (CI); `--force` signs in again and revokes the old key; `--no-browser` prints the link instead of opening it |
+| `chartnaut login` | Signs in through your browser and saves a key named *CLI on* your computer's name. Prints when the key expires | `--expires 7d\|30d\|90d` how long the key lasts (default `90d`); `--token <token>` saves an existing key (CI); `--force` signs in again and revokes the old key; `--no-browser` prints the link instead of opening it |
 | `chartnaut logout` | Revokes this computer's key and deletes the saved copy | |
-| `chartnaut whoami` | Prints user, plan, key name, expiry, scopes and the API address | |
+| `chartnaut whoami` | Prints user, plan, key name and expiry (`expires 2027-01-09` or `never expires`), scopes and the API address | |
 
 ### Project and scripts
 
@@ -359,8 +362,30 @@ When the study needs a change, the error ends with a `fix:` line and a `docs:` l
 |---|---|---|
 | `chartnaut library search [q]` | Searches every script you can use: yours, Chartnaut's built-ins and other people's public ones. Never returns source | `--scope all\|library\|mine\|published\|chartnaut\|community\|installed`; `--author <name\|chartnaut\|me>`; `--kind <kind>`; `--sort relevance\|updated\|created\|adoptions\|name`; `--interface` (with `--json`); `--limit`, `--cursor` |
 | `chartnaut library show <ref>` | One script's settings, outputs, events, results and app link. `<ref>` is `author/slug[@N]`, `chartnaut/slug` or `me/slug` | `--kind <kind>` when one of your studies shares the slug |
+| `chartnaut library add <author/slug>` | Adds another author's script to your library, with the scripts it uses that you do not have. Lists them and asks `Add them? [y/N]` first. Exits 4 without adding anything when some are not shared with you, or with no terminal and no `--yes` | `--yes` agrees without asking (scripts, CI); `--kind indicator\|definition` when the author has both under one slug |
+| `chartnaut library remove <author/slug>` | Takes it out of your library. The scripts added with it stay | `--kind indicator\|definition` |
+| `chartnaut library needs <author/slug>` | Lists what `library add` would add, without adding anything. Also `library requirements` | `--kind indicator\|definition` |
 
-The ref in the first column of `search` runs as it is: `chartnaut run chartnaut/rsi --on BTC --tf 1h --last 30d`.
+The ref in the first column of `search` runs as it is when it is yours or Chartnaut's: `chartnaut run chartnaut/rsi --on BTC --tf 1h --last 30d`. Another author's script runs once it is in your library, as in the app:
+
+```
+$ chartnaut run jane/orb-breakout --on BTC --tf 5m --last 30d
+error: not_in_library: jane/orb-breakout is not in your library.
+Add it first: chartnaut library add jane/orb-breakout
+
+$ chartnaut library add jane/orb-breakout
+To use ORB breakout, we'll add 2 more scripts to your library:
+REF                 KIND       AUTHOR
+jane/session-range  indicator  jane
+sam/atr-bands       indicator  sam
+They stay yours, and you can remove them whenever you like.
+Add them? [y/N] y
+Added ORB breakout (jane/orb-breakout) to your library.
+Also added: jane/session-range, sam/atr-bands
+Run it: chartnaut run jane/orb-breakout
+```
+
+An added script follows its author's latest version. A study's definitions follow the same rule: a study run whose definitions are not in your library prints one `library add` line for each. Studies themselves cannot be added; only your own run.
 
 ### Catalogue
 
@@ -422,8 +447,8 @@ With `--write`:
 | 0 | It worked. Also a run started with `--no-wait` that is still queued or running | Carry on |
 | 1 | The script is invalid. Each finding prints as `path:line: severity: message` | Fix the lines named, validate again |
 | 2 | The run started and failed. `failure.kind` and the message are printed | Read the failure and the console lines |
-| 3 | Not signed in, the key lacks a scope, or a plan limit | Sign in, use a key with the scope, or upgrade |
-| 4 | Bad usage, not found, a version conflict, an unknown instrument or timeframe, or a window before your plan's history | Fix the command |
+| 3 | Not signed in, the key expired or lacks a scope, or a plan limit | Sign in, use a key with the scope, or upgrade |
+| 4 | Bad usage, not found, a version conflict, an unknown instrument or timeframe, a window before your plan's history, another author's script not in your library, or `library add` not agreed to | Fix the command, or add the script to your library |
 | 5 | Retryable: busy, rate limited, data not ready, a run not finished yet, a server error or the network | Wait, then run the same command again |
 
 With several instruments, the CLI exits with the highest code among them. Every error code and `failure.kind` is on [Errors and exit codes](https://docs.chartnaut.com/cli/errors-and-exit-codes/), and the objects are [The Failure object](https://docs.chartnaut.com/cli/api-object-failure/) and [The Diagnostic object](https://docs.chartnaut.com/cli/api-object-diagnostic/).
@@ -445,13 +470,13 @@ With several instruments, the CLI exits with the highest code among them. Every 
 | `CHARTNAUT_API_URL` | The API address. Defaults to `https://api.chartnaut.com/v1`. Regional hosts: `https://eu-api.chartnaut.com/public/v1` and `https://us-api.chartnaut.com/public/v1` |
 | `CHARTNAUT_APP_URL` | An extra app host the CLI trusts when opening links. The app is at `https://terminal.chartnaut.com` |
 | `CHARTNAUT_NO_BROWSER` | When set, `login` prints the link instead of opening a browser |
-| `CHARTNAUT_DOWNLOAD_URL` | Where `upgrade` reads the release manifest. Defaults to `https://desktop-updates.chartnaut.com/cli` |
+| `CHARTNAUT_DOWNLOAD_URL` | Where `upgrade` and the installers read the release manifest. Defaults to `https://desktop-updates.chartnaut.com/cli`. `https://desktop-updates.chartnaut.com/cli/unstable` is the release candidate being tested |
 
 ## Credentials and config
 
 | File | Holds |
 |---|---|
-| `~/.config/chartnaut/credentials.json` | The key `chartnaut login` saved, with the time it was saved. The folder is created `0700` and the file `0600`, readable only by you. On Windows it is under `%USERPROFILE%\.config\chartnaut` |
+| `~/.config/chartnaut/credentials.json` | The key `chartnaut login` saved, with the time it was saved and when the key expires (for the warning). The folder is created `0700` and the file `0600`, readable only by you. On Windows it is under `%USERPROFILE%\.config\chartnaut` |
 | `chartnaut.json` | Project defaults, in your project folder |
 | `<kind-plural>/<slug>/script.json` | One script's kind, slug, name, entry file and base version |
 
@@ -484,6 +509,10 @@ Report a vulnerability as described in [SECURITY.md](SECURITY.md).
 | You see | Cause | Fix |
 |---|---|---|
 | ``error: unauthorized: not logged in. Run `chartnaut login` or set CHARTNAUT_TOKEN.`` | No saved key and no `CHARTNAUT_TOKEN` | Run `chartnaut login` |
+| `error: unauthorized: your key expired. Run chartnaut login.` | The key reached its expiry date | Run `chartnaut login` |
+| `warning: your Chartnaut key expires on …` | The key runs out within 7 days | Run `chartnaut login` to get a new one |
+| `not_in_library`, exit 4 | Another author's script is not in your library | Run the `chartnaut library add …` line it prints |
+| `not_shared`, exit 4 | The script uses scripts that are not shared with you | It cannot be added. Ask the author, or use another script |
 | `plan_limit` on every command | The account is on Free | Upgrade to Starter or above. The same key works again |
 | `forbidden_scope` | The key lacks a scope the call needs | Use a key with that scope. [API keys](https://docs.chartnaut.com/cli/api-keys/) |
 | `path:line: error: …` and `invalid: <slug>` | The script does not lint or resolve | Fix each `error` line. [Lint and error codes](https://docs.chartnaut.com/scripting/lint-and-error-codes/) |

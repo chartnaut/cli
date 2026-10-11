@@ -39,8 +39,8 @@ Read the run summary, not the code, to judge a change.
 | 0 | ok | continue |
 | 1 | script invalid | fix the printed diagnostics, validate again |
 | 2 | run failed | read `failure` and the console lines |
-| 3 | auth, scope or plan limit | stop and tell the user |
-| 4 | bad usage or not found | fix the command |
+| 3 | auth, scope or plan limit, expired key | stop and tell the user |
+| 4 | bad usage, not found, or not in your library | fix the command, or ask the user before `library add` |
 | 5 | retryable (busy, rate limited, data not ready) | wait, then retry the same command |
 
 With several instruments the exit code is the highest among them. The CLI has already retried busy and rate-limited calls before it exits 5.
@@ -62,6 +62,8 @@ With several instruments the exit code is the highest among them. The CLI has al
 - Pin versions when comparing: run `slug@3` against `slug@4`, not a bare `slug`, so a save in the app between runs cannot change the answer.
 - Keep your own instructions outside the `chartnaut:begin` / `chartnaut:end` block; `chartnaut init` replaces what is inside it.
 - Do not `push --force` without the user's agreement.
+- Another author's script (`author/slug`) runs only once it is in the user's library. `chartnaut library needs <ref>` lists what adding it would also add; show the user and run `chartnaut library add <ref> --yes` only after they agree. A run refused with `not_in_library` prints the exact `library add` command; `not_shared` means it cannot be added.
+- A stderr line `warning: your Chartnaut key expires on …` means the key runs out within 7 days. Tell the user; do not sign in for them.
 - Start on short windows. Every run uses the account's shared runs at once and compute.
 - `chartnaut mcp install [claude|codex|cursor]` prints how to connect Claude Code, Cursor or Codex to Chartnaut's MCP server. Do not add `--write` without the user's agreement: for `claude` and `cursor` it writes their API key into that client's config.
 
@@ -88,15 +90,16 @@ npm run test:e2e    # hermetic end-to-end suite in test/e2e, no network
 node dist/index.js --help
 ```
 
-Node 20 or later. `npm run build:binaries` also needs Bun and is for releases only (see RELEASING.md).
+Node 20 or later. `npm run build:binaries` also needs Bun and is for releases only (see RELEASING.md). Releases go to the `unstable` channel first and are promoted to `stable` after the release gate.
 
 ### Layout
 
 - `src/cli.ts` builds the commander program and maps errors to exit codes.
-- `src/commands/*.ts` hold the commands: `account.ts` (login, logout, whoami, usage, library, instruments, docs), `scripts.ts` (init, new, validate, push, pull, diff, ls, versions, open), `run.ts` (run, runs), `events.ts` (events, collect), `mcp.ts` (mcp install), `upgrade.ts`.
+- `src/commands/*.ts` hold the commands: `account.ts` (login, logout, whoami, usage, library search and show, instruments, docs), `library.ts` (library add, remove, needs), `scripts.ts` (init, new, validate, push, pull, diff, ls, versions, open), `run.ts` (run, runs), `events.ts` (events, collect), `mcp.ts` (mcp install), `upgrade.ts`.
 - `src/client.ts` is the only HTTP code: auth header, retries, `Retry-After`, `Idempotency-Key`.
 - `src/context.ts` defines `Ctx`, everything that touches the outside world. Commands never reach `process`, the network or the home folder directly; tests pass a fake `Ctx`.
-- `src/errors.ts` holds `EXIT` and the error-code to exit-code map.
+- `src/errors.ts` holds `EXIT`, the error-code to exit-code map, and the hints printed under an API error (`not_in_library` → the `library add` command).
+- `src/config.ts` holds the credentials file, including the cached key expiry behind the warning every command prints.
 - `src/guide.ts` is the text `chartnaut init` writes into user projects.
 - `test/helpers.ts` provides `harness(routes)`: a fake `Ctx` with a routed fake fetch, temp cwd and home.
 

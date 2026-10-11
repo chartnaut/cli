@@ -2,6 +2,32 @@
 
 Notable changes to the Chartnaut CLI. Versions follow [Semantic Versioning](https://semver.org/).
 
+## 0.2.0
+
+Upgrade with `chartnaut upgrade`.
+
+### Keys that expire
+
+- `chartnaut login` now creates a key that expires after 90 days. `--expires 7d`, `30d` or `90d` picks another lifetime (the approval page can shorten it, never lengthen it). After signing in it prints `Key expires on <date> (<N> days).` `login --token` is unchanged.
+- `chartnaut whoami` prints when the key expires, or that it never expires.
+- From 7 days before the key expires, every command prints one line on stderr: `warning: your Chartnaut key expires on <date>; run chartnaut login to renew.` The date is saved with the key when you sign in, so the check makes no extra request. `whoami` refreshes it.
+- `chartnaut login` with a key that expires within 7 days signs in again and revokes the old key, instead of stopping at "already signed in".
+- An expired key prints `error: unauthorized: your key expired. Run chartnaut login.` and exits 3.
+
+### Library
+
+- `chartnaut library add <author/slug>` adds another author's script to your library, as the app's Add to library does. If it uses scripts you do not have, it lists them and asks `Add them? [y/N]`. `--yes` agrees without asking, for scripts and CI. Without a terminal and without `--yes` it adds nothing and exits 4. If it uses scripts that are not shared with you, it names them and exits 4. `--kind indicator|definition` picks one when the author has both under one slug.
+- `chartnaut library remove <author/slug>` takes it out again. The scripts added with it stay.
+- `chartnaut library needs <author/slug>` (also `library requirements`) lists what adding it would add, without adding anything.
+
+### Runs of other people's scripts
+
+- Another author's script now runs only once it is in your library, exactly as in the app. `chartnaut run author/slug` for one that is not prints the API's message and `Add it first: chartnaut library add author/slug`, and exits 4. A study whose definitions are not in your library gets one such line per definition. `not_shared` lists the scripts that are not shared with you.
+
+### Release channels
+
+- Releases are published to an `unstable` channel first (`https://desktop-updates.chartnaut.com/cli/unstable`), tested, then promoted to the stable one. To try a candidate: `CHARTNAUT_DOWNLOAD_URL=https://desktop-updates.chartnaut.com/cli/unstable` with the installers or `chartnaut upgrade`.
+
 ## 0.1.1
 
 Security fixes. Upgrade with `chartnaut upgrade`.

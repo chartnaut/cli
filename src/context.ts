@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { spawn } from 'node:child_process';
+import readline from 'node:readline';
 
 /**
  * Everything the CLI touches in the outside world. Tests replace it wholesale,
@@ -18,6 +19,8 @@ export interface Ctx {
   sleep: (ms: number) => Promise<void>;
   /** Reads one secret line (hidden when a TTY). */
   readSecret: (prompt: string) => Promise<string>;
+  /** Asks a question on the terminal and resolves the typed line; null when stdin is not a terminal. */
+  ask: (prompt: string) => Promise<string | null>;
   /** Runs an external program; resolves with its exit code. */
   exec: (cmd: string, args: string[]) => Promise<number>;
   platform: NodeJS.Platform;
@@ -36,11 +39,25 @@ export function realCtx(): Ctx {
     err: (t) => process.stderr.write(t.endsWith('\n') ? t : t + '\n'),
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
     readSecret,
+    ask,
     exec: (cmd, args) => execCommand(cmd, args, process.platform),
     platform: process.platform,
     arch: process.arch,
     execPath: process.execPath,
   };
+}
+
+async function ask(prompt: string): Promise<string | null> {
+  if (!process.stdin.isTTY) return null;
+  const rl = readline.createInterface({ input: process.stdin, output: process.stderr, terminal: true });
+  try {
+    return await new Promise<string>((resolve) => {
+      rl.once('close', () => resolve(''));
+      rl.question(prompt, resolve);
+    });
+  } finally {
+    rl.close();
+  }
 }
 
 async function readSecret(prompt: string): Promise<string> {

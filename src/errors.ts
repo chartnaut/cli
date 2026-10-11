@@ -71,6 +71,11 @@ export function exitCodeForErrorCode(code: string, status = 0): number {
     case 'out_of_coverage':
     case 'unknown_instrument':
     case 'unsupported_timeframe':
+    case 'not_in_library':
+    case 'confirmation_required':
+    case 'not_shared':
+    case 'not_installable':
+    case 'conflict':
       return EXIT.USAGE;
   }
   if (status === 401 || status === 403) return EXIT.AUTH;
@@ -103,13 +108,59 @@ export function formatDiagnostic(d: Diagnostic): string {
   return `${where}: ${d.severity ?? 'error'}: ${d.message}${code}`;
 }
 
+/** The server's message for a key past its expiry date. */
+export function isExpiredKey(e: ApiError): boolean {
+  return e.status === 401 && /token expired/i.test(e.body.message ?? '');
+}
+
 /** Renders an ApiError the way every command prints it. */
 export function formatApiError(e: ApiError): string[] {
-  const lines = [`error: ${e.body.code}: ${e.body.message}`];
+  const lines = [isExpiredKey(e) ? 'error: unauthorized: your key expired. Run chartnaut login.' : `error: ${e.body.code}: ${e.body.message}`];
   for (const d of e.diagnostics) lines.push(formatDiagnostic(d));
   const details = e.body.details ?? {};
+  lines.push(...libraryHints(e.body.code, details));
   if (typeof details.fix === 'string' && details.fix) lines.push(`fix: ${details.fix}`);
   if (typeof details.docs_url === 'string' && details.docs_url) lines.push(`docs: ${details.docs_url}`);
   if (e.body.request_id) lines.push(`request_id: ${e.body.request_id}`);
+  return lines;
+}
+
+/** A ref safe to print inside a command the user may paste: author/slug, nothing else. */
+export function plainRef(v: unknown): string | undefined {
+  const ref = typeof v === 'string' ? v : v && typeof v === 'object' ? (v as { ref?: unknown }).ref : undefined;
+  return typeof ref === 'string' && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(ref) ? ref : undefined;
+}
+
+/** "name (kind)" lines for scripts that are not shared with the caller. */
+function notShared(list: unknown): string[] {
+  if (!Array.isArray(list)) return [];
+  return list.map((c: any) => `  not shared with you: ${c?.name ?? c?.ref ?? '?'}${c?.kind ? ` (${c.kind})` : ''}`);
+}
+
+/**
+ * The next step for the library refusals: a run of another author's script that is not in the
+ * caller's library (one line per definition for a study), and scripts that cannot be added.
+ */
+export function libraryHints(code: string, details: Record<string, unknown>): string[] {
+  const lines: string[] = [];
+  if (code === 'not_in_library') {
+    const defs = Array.isArray(details.definitions) ? details.definitions : [];
+    const refs = defs.length ? defs : [details.ref];
+    for (const d of refs) {
+      const ref = plainRef(d);
+      if (ref) lines.push(`Add it first: chartnaut library add ${ref}`);
+      if (d && typeof d === 'object') lines.push(...notShared((d as { cannot_add?: unknown }).cannot_add));
+    }
+    lines.push(...notShared(details.cannot_add));
+  } else if (code === 'not_shared') {
+    lines.push(...notShared(details.cannot_add));
+    const defs = Array.isArray(details.definitions) ? details.definitions : [];
+    for (const d of defs) if (d && typeof d === 'object') lines.push(...notShared((d as { cannot_add?: unknown }).cannot_add));
+  } else if (code === 'confirmation_required' && Array.isArray(details.missing)) {
+    for (const r of details.missing) {
+      const ref = plainRef(r);
+      if (ref) lines.push(`  not agreed: ${ref}`);
+    }
+  }
   return lines;
 }

@@ -21,6 +21,8 @@ export interface Harness {
   stderr: string[];
   sleeps: number[];
   execs: { cmd: string; args: string[] }[];
+  /** Prompts passed to ctx.ask. */
+  asked: string[];
   cwd: string;
   home: string;
   run: (...argv: string[]) => Promise<number>;
@@ -36,7 +38,7 @@ export function tmpdir(prefix = 'cn-'): string {
  * A Ctx with a routed fake fetch. `routes` maps "METHOD /path" (path without
  * the /v1 base, no query) to a reply or handler; unmatched requests 404.
  */
-export function harness(routes: Record<string, Reply | Handler | Reply[]> = {}, opts: { env?: Record<string, string>; secret?: string } = {}): Harness {
+export function harness(routes: Record<string, Reply | Handler | Reply[]> = {}, opts: { env?: Record<string, string>; secret?: string; answers?: string[] } = {}): Harness {
   const cwd = tmpdir('cn-cwd-');
   const home = tmpdir('cn-home-');
   const calls: Call[] = [];
@@ -44,6 +46,7 @@ export function harness(routes: Record<string, Reply | Handler | Reply[]> = {}, 
   const stderr: string[] = [];
   const sleeps: number[] = [];
   const execs: { cmd: string; args: string[] }[] = [];
+  const asked: string[] = [];
   const counts = new Map<string, number>();
 
   const fakeFetch = (async (input: string | URL, init: RequestInit = {}) => {
@@ -78,6 +81,11 @@ export function harness(routes: Record<string, Reply | Handler | Reply[]> = {}, 
       sleeps.push(ms);
     },
     readSecret: async () => opts.secret ?? '',
+    // No answers given: stdin is not a terminal.
+    ask: async (prompt) => {
+      asked.push(prompt);
+      return opts.answers ? (opts.answers.shift() ?? '') : null;
+    },
     exec: async (cmd, args) => {
       execs.push({ cmd, args });
       return 0;
@@ -93,6 +101,7 @@ export function harness(routes: Record<string, Reply | Handler | Reply[]> = {}, 
     stderr,
     sleeps,
     execs,
+    asked,
     cwd,
     home,
     run: (...argv) => main(argv, ctx),
