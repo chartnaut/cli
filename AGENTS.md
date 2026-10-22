@@ -52,7 +52,7 @@ With several instruments the exit code is the highest among them. The CLI has al
 - Every `run` prints the run id (`id` in `--json`). Fetch full results with it:
   - indicator or definition: `chartnaut runs results <id> --all`
   - study: `chartnaut runs results <id> --full`, or one block with `--keys <key> --format csv`
-- `failure.kind` says why a run stopped: `script`, `data_not_ready`, `out_of_coverage`, `busy`, `timeout`, `plan_limit`, `cancelled`, `internal`.
+- `failure.kind` says why a run stopped: `script`, `data_not_ready`, `out_of_coverage`, `market_unavailable`, `busy`, `timeout`, `plan_limit`, `cancelled`, `internal`. `market_unavailable` is a data source down on Chartnaut's side: don't change the script, run it again shortly.
 - `console` on a run holds the first lines the script printed. `summary.warnings` explains quiet results, such as `emit_never_reached`.
 
 ### Rules

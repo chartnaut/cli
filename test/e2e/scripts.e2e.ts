@@ -137,6 +137,14 @@ describe('a project from init to push, pull and diff', () => {
     assert.equal(readJson(path.join(ema(), 'script.json')).version, 6);
   });
 
+  it('push --visibility on a study is refused before any request: studies are private', async () => {
+    const before = w.api.requests.length;
+    const r = await w.cli(['push', 'studies/bull-stats', '--visibility', 'public']);
+    assert.equal(r.code, 4);
+    assert.match(r.stderr, /Studies are private: only you can see and run them\. Push without --visibility\./);
+    assert.equal(w.api.requests.length, before);
+  });
+
   it('diff shows local changes against the latest remote version', async () => {
     w.api.on('GET /scripts/my-ema', { json: script({ latest_version: 6, version: 6, files: [{ path: 'main.ts', code: EMA_V1, entry: true }] }) });
     const r = await w.cli(['diff', 'my-ema']);

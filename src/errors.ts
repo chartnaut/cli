@@ -100,7 +100,7 @@ export function exitCodeForRun(run: { status?: string; failure?: { kind?: string
  * collections: the same outcome as an HTTP busy / data_not_ready / internal, so the same
  * exit code.
  */
-export const RETRYABLE_RUN_FAILURES = new Set(['busy', 'data_not_ready', 'timeout', 'internal']);
+export const RETRYABLE_RUN_FAILURES = new Set(['busy', 'data_not_ready', 'market_unavailable', 'timeout', 'internal']);
 
 export function formatDiagnostic(d: Diagnostic): string {
   const where = `${d.path ?? '-'}:${d.line ?? 0}`;

@@ -252,7 +252,7 @@ Each push saves a new version that never changes afterwards, so `orb-break@3` is
 | Flag | Takes |
 |---|---|
 | `--on <instrument>` | A symbol such as `BTC` or `ETH` (shown as `HYPERLIQUID:BTC`). `run` takes a comma list |
-| `--tf <timeframe>` | One of `1m 5m 15m 30m 1h 2h 4h 1d 1w` |
+| `--tf <timeframe>` | One of `1m 5m 15m 30m 1h 2h 4h 1d 1w 1mo` (`1mo` is the calendar month; `1M` means the same) |
 | `--last <span>` | A span back from now: `30d`, `12w`, `6m` or `1y` |
 | `--bars <n>` | A number of bars back from now |
 | `--from <date>`, `--to <date>` | A date (`2026-01-02`, read as midnight UTC), a full ISO timestamp or unix seconds. `--to` defaults to now and needs `--from` |

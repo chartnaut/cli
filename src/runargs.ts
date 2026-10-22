@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { CliError, EXIT } from './errors.js';
-import { type Kind, type ProjectDefaults, TIMEFRAMES, readScript } from './project.js';
+import { type Kind, type ProjectDefaults, TIMEFRAMES, normaliseTimeframe, readScript } from './project.js';
 
 export interface RunFlags {
   on?: string;
@@ -102,8 +102,9 @@ function checkBars(b: string | number): number {
 export function parseTimeframe(tf: string | undefined, defaults: ProjectDefaults = {}): string {
   const v = tf ?? defaults.timeframe;
   if (!v) throw usage('no timeframe: pass --tf 5m (or set defaults.timeframe in chartnaut.json)');
-  if (!TIMEFRAMES.includes(v)) throw usage(`unsupported timeframe "${v}" (use ${TIMEFRAMES.join(' ')})`);
-  return v;
+  const n = normaliseTimeframe(v);
+  if (!TIMEFRAMES.includes(n)) throw usage(`unsupported timeframe "${v}" (use ${TIMEFRAMES.join(' ')}; 1mo is the calendar month)`);
+  return n;
 }
 
 export function parseInstruments(on: string | undefined, defaults: ProjectDefaults = {}): string[] {

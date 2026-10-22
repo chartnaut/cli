@@ -297,7 +297,7 @@ export function registerRun(program: Command, env: Env): void {
     .description('run a local script folder/file (inline) or a saved ref on Chartnaut servers')
     .argument('<target>', 'path to a script folder or file, or a ref (slug, slug@3, author/slug, chartnaut/rsi)')
     .option('--on <instruments>', 'instrument, or comma list (one run each, max 3 at once)')
-    .option('--tf <timeframe>', 'timeframe (1m 5m 15m 30m 1h 2h 4h 1d 1w)')
+    .option('--tf <timeframe>', 'timeframe (1m 5m 15m 30m 1h 2h 4h 1d 1w 1mo; 1mo = calendar month)')
     .option('--from <date>', 'window start (ISO date/time)')
     .option('--to <date>', 'window end (ISO date/time, default now)')
     .option('--last <span>', 'window as a span back from now, e.g. 30d, 12w, 6m, 1y')

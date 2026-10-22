@@ -201,7 +201,7 @@ export function registerAccount(program: Command, env: Env): void {
         i.name,
         i.category,
         i.order_flow,
-        i.coverage ? `${shortTime(i.coverage.start).slice(0, 10)} → ${shortTime(i.coverage.end).slice(0, 10)}` : '-',
+        i.coverage ? `${shortTime(i.coverage.start).slice(0, 10)} → ${i.coverage.live ? 'now' : shortTime(i.coverage.end).slice(0, 10)}` : '-',
       ]);
       env.out(rows.length ? table(['short', 'symbol', 'name', 'category', 'order_flow', 'coverage'], rows) : 'no matches');
       if (res.data?.next_cursor) env.out(`more: --cursor ${res.data.next_cursor}`);

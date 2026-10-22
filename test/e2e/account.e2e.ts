@@ -134,10 +134,10 @@ describe('account errors', () => {
   });
 
   it('403 plan_limit exits 3', async () => {
-    w.api.on('GET /usage', apiError(403, 'plan_limit', 'The API is included on Starter and above.'));
+    w.api.on('GET /usage', apiError(403, 'plan_limit', 'Event studies are part of Starter and above.'));
     const r = await w.cli(['usage']);
     assert.equal(r.code, 3);
-    assert.match(r.stderr, /error: plan_limit: The API is included on Starter and above\./);
+    assert.match(r.stderr, /error: plan_limit: Event studies are part of Starter and above\./);
   });
 
   it('CHARTNAUT_TOKEN is sent as the bearer key', async () => {

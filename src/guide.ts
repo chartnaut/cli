@@ -140,7 +140,8 @@ without \`--dry-run\`. A refusal prints \`fix:\` with what the study needs.
 ## When something looks wrong
 
 - \`failure.kind\` says why a run stopped: \`script\` (your code), \`data_not_ready\` /
-  \`out_of_coverage\` (no data there), \`busy\` / \`timeout\` (retry), \`plan_limit\` (tell the user).
+  \`out_of_coverage\` (no data there), \`market_unavailable\` (a data source is down — not your
+  code; retry in a minute), \`busy\` / \`timeout\` (retry), \`plan_limit\` (tell the user).
 - \`console\` on the run holds the first 50 lines your script printed (\`console.log\` works).
 - \`summary.warnings\` explains quiet results, e.g. \`emit_never_reached\` (no event fired) or a
   dependency that only runs in the browser and reads empty here.

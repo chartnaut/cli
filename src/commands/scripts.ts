@@ -174,10 +174,13 @@ export function registerScripts(program: Command, env: Env): void {
     .argument('[path]', 'script folder', '.')
     .option('-m, --message <msg>', 'change summary')
     .option('--force', 'on version conflict, save on top of the latest remote version')
-    .addOption(new Option('--visibility <v>', 'visibility on first push').choices(['private', 'public']))
+    .addOption(new Option('--visibility <v>', 'visibility on first push (indicators and definitions; studies are always private)').choices(['private', 'public']))
     .action(async (p: string, opts: { message?: string; force?: boolean; visibility?: string }, cmd: Command) => {
       const s = readScript(path.resolve(env.ctx.cwd, p));
       if (!fs.existsSync(path.join(s.dir, 'script.json'))) throw new CliError('error: invalid_request: push needs a script folder with script.json', EXIT.USAGE);
+      if (opts.visibility !== undefined && s.meta.kind === 'study') {
+        throw new CliError('error: invalid_request: Studies are private: only you can see and run them. Push without --visibility.', EXIT.USAGE);
+      }
       const slug = s.meta.slug;
       const put = (base: number) =>
         env.client.put<any>(`/scripts/${encodeRef(slug)}`, {

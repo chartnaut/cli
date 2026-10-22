@@ -166,6 +166,33 @@ test('push creates on first push and writes the version back; later pushes send 
   assert.equal(readJson(meta).version, 2);
 });
 
+test('push --visibility is refused for a study: studies are private', async () => {
+  const h = harness({ 'POST /scripts': { status: 201, json: { slug: 's', kind: 'study', version: 1, latest_version: 1 } } });
+  writeFiles(h.cwd, {
+    'studies/s/script.json': JSON.stringify({ kind: 'study', slug: 's', name: 'S', entry: 'main.ts' }),
+    'studies/s/main.ts': 'x',
+  });
+  for (const v of ['public', 'private']) {
+    assert.equal(await h.run('push', 'studies/s', '--visibility', v), 4);
+    assert.match(h.err(), /Studies are private: only you can see and run them/);
+  }
+  assert.equal(h.calls.length, 0);
+  // Without the flag a study pushes as usual, and sends no visibility.
+  assert.equal(await h.run('push', 'studies/s'), 0, h.err());
+  assert.equal(h.calls[0]!.body.visibility, undefined);
+  assert.equal(h.calls[0]!.body.kind, 'study');
+});
+
+test('push --visibility public still applies to an indicator on first push', async () => {
+  const h = harness({ 'POST /scripts': { status: 201, json: { slug: 'r', kind: 'indicator', version: 1, latest_version: 1 } } });
+  writeFiles(h.cwd, {
+    'indicators/r/script.json': JSON.stringify({ kind: 'indicator', slug: 'r', name: 'R', entry: 'main.ts' }),
+    'indicators/r/main.ts': 'x',
+  });
+  assert.equal(await h.run('push', 'indicators/r', '--visibility', 'public'), 0, h.err());
+  assert.equal(h.calls[0]!.body.visibility, 'public');
+});
+
 test('push on version_conflict exits 4 with advice; --force rebases on latest', async () => {
   const conflict = { status: 409, json: { error: { code: 'version_conflict', message: 'latest is 5' } } };
   const h = harness({

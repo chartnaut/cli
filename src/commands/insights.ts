@@ -2,8 +2,8 @@ import { Command, Option } from 'commander';
 import type { Env } from '../env.js';
 import { shortTime, table } from '../output.js';
 import { CliError, EXIT } from '../errors.js';
-
-const TIMEFRAMES = ['1m', '5m', '15m', '30m', '1h', '2h', '4h', '1d', '1w'];
+import { parseTimeframe } from '../runargs.js';
+import { TIMEFRAMES } from '../project.js';
 
 /** The preview card as text: each breakdown group's heading and its lines. */
 export function renderCard(card: any): string {
@@ -44,7 +44,7 @@ export function registerInsights(program: Command, env: Env): void {
     .option('--definition <slug>', 'only insights on this definition')
     .option('--study <slug>', 'only insights made from this study')
     .option('--on <instrument>', 'only this instrument')
-    .addOption(new Option('--tf <timeframe>', 'only this timeframe').choices(TIMEFRAMES))
+    .addOption(new Option('--tf <timeframe>', `only this timeframe (${TIMEFRAMES.join(', ')})`).argParser((v: string) => parseTimeframe(v)))
     .option('--limit <n>', 'page size')
     .option('--cursor <cursor>', 'page cursor')
     .action(async (opts: any, cmd: Command) => {

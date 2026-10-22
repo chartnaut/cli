@@ -33,7 +33,7 @@ describe('error mapping and retries', () => {
     const scope = await w.cli(['runs', 'cancel', 'run_1']);
     assert.equal(scope.code, 3);
     assert.match(scope.stderr, /error: forbidden_scope: This key lacks runs:write\./);
-    w.api.on('POST /runs', apiError(403, 'plan_limit', 'The API is included on Starter and above.'));
+    w.api.on('POST /runs', apiError(403, 'plan_limit', 'Definitions and collecting events are part of Starter and above.'));
     assert.equal((await w.cli(['run', 'my-ema', '--on', 'BTC', '--tf', '5m', '--last', '7d'])).code, 3);
   });
 

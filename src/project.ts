@@ -5,7 +5,20 @@ import { CliError, EXIT } from './errors.js';
 export type Kind = 'indicator' | 'definition' | 'study';
 export const KINDS: Kind[] = ['indicator', 'definition', 'study'];
 export const KIND_DIR: Record<Kind, string> = { indicator: 'indicators', definition: 'definitions', study: 'studies' };
-export const TIMEFRAMES = ['1m', '5m', '15m', '30m', '1h', '2h', '4h', '1d', '1w'];
+/** The public API's timeframes. `1mo` is the UTC calendar month (00:00 UTC on the 1st). */
+export const TIMEFRAMES = ['1m', '5m', '15m', '30m', '1h', '2h', '4h', '1d', '1w', '1mo'];
+
+/**
+ * The canonical spelling of a timeframe: whitespace removed and lower case, except that a capital
+ * M is months — "M" and "1M" are "1mo" (lowercased, "1M" would be "1m", one MINUTE); "3M" is
+ * "3mo", which is off the palette. Mirrors normaliseTimeframe in packages/scripting.
+ */
+export function normaliseTimeframe(raw: string): string {
+  const s = raw.replace(/\s+/g, '');
+  const m = /^(\d*)M$/.exec(s);
+  if (m) return `${m[1] || '1'}mo`;
+  return s.toLowerCase();
+}
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,62}$/;
 
 export const PROJECT_FILE = 'chartnaut.json';

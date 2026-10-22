@@ -30,7 +30,7 @@ test('run outcomes map to exit codes', () => {
   assert.equal(exitCodeForRun({ status: 'failed', failure: { kind: 'out_of_coverage' } }), 2);
   assert.equal(exitCodeForRun({ status: 'failed', failure: { kind: 'plan_limit' } }), 3);
   // Retryable run failures exit 5, the same as the HTTP errors they correspond to.
-  for (const kind of ['busy', 'timeout', 'data_not_ready', 'internal']) {
+  for (const kind of ['busy', 'timeout', 'data_not_ready', 'market_unavailable', 'internal']) {
     assert.equal(exitCodeForRun({ status: 'failed', failure: { kind, retryable: true } }), 5, kind);
     assert.equal(exitCodeForRun({ status: 'failed', failure: { kind } }), 5, kind);
   }
@@ -79,6 +79,14 @@ test('timeframe and instruments', () => {
   assert.equal(parseTimeframe('5m'), '5m');
   assert.equal(parseTimeframe(undefined, { timeframe: '1h' }), '1h');
   assert.throws(() => parseTimeframe('3m'), /unsupported timeframe/);
+  // The calendar month: "1mo", and "M"/"1M" mean it — never one minute. "3M" is off the palette.
+  assert.equal(parseTimeframe('1mo'), '1mo');
+  assert.equal(parseTimeframe('1M'), '1mo');
+  assert.equal(parseTimeframe('M'), '1mo');
+  assert.equal(parseTimeframe(undefined, { timeframe: '1M' }), '1mo');
+  assert.equal(parseTimeframe('1H'), '1h');
+  assert.throws(() => parseTimeframe('3M'), /unsupported timeframe/);
+  assert.throws(() => parseTimeframe('2mo'), /unsupported timeframe/);
   assert.deepEqual(parseInstruments('BTC, ETH,BTC'), ['BTC', 'ETH']);
   assert.deepEqual(parseInstruments(undefined, { instrument: 'BTC' }), ['BTC']);
   assert.throws(() => parseInstruments(undefined), /no instrument/);
