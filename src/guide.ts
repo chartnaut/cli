@@ -135,7 +135,8 @@ The study must publish \`pin_cell\`; read \`chartnaut docs chart-pins-overview\`
 Then run the study on the instrument and timeframe to chart, check
 \`chartnaut runs results <id> --keys pin_cell\`, and
 \`chartnaut insights create <run id> --name "<card title>" --dry-run\`. Show the preview, then run it
-without \`--dry-run\`. A refusal prints \`fix:\` with what the study needs.
+without \`--dry-run\`. A refusal prints \`fix:\` with what the study needs. That saves it to the user's
+library; it shows on their charts once it is active (\`chartnaut insights activate <id>\`, when they ask).
 
 ## When something looks wrong
 

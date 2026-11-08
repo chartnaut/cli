@@ -69,3 +69,56 @@ test('a malformed insight id is a usage error and makes no request', async () =>
   assert.equal(h.calls.length, 0);
   assert.match(h.err(), /ins_123/);
 });
+
+test('insights list shows whether each one is active', async () => {
+  const h = harness({ 'GET /insights': { json: { data: [{ ...insight, active: true, active_state: 'paused' }, { ...insight, id: 'ins_62', active: false }] } } });
+  assert.equal(await h.run('insights'), 0, h.err());
+  assert.match(h.out(), /ACTIVE/);
+  assert.match(h.out(), /ins_61.*paused/);
+  assert.match(h.out(), /ins_62.*-\s*$/m);
+});
+
+test('insights show prints active state and valid_from', async () => {
+  const h = harness({ 'GET /insights/ins_61': { json: { ...insight, active: true, active_state: 'live', valid_from: '2026-01-01T01:00:00Z' } } });
+  assert.equal(await h.run('insights', 'show', 'ins_61'), 0, h.err());
+  assert.match(h.out(), /on your charts: yes/);
+  assert.match(h.out(), /out of sample from:/);
+});
+
+test('insights create prints the saved-to-library message and sends --replaces', async () => {
+  const h = harness({ 'POST /insights': { status: 201, json: { ...insight, message: 'Saved to your library. To see it, make it active on a BTC 1h chart.' } } });
+  assert.equal(await h.run('insights', 'create', 'run_1', '--name', 'X', '--replaces', 'ins_61'), 0, h.err());
+  assert.deepEqual(h.calls[0]!.body, { run: 'run_1', name: 'X', replaces: 'ins_61' });
+  assert.match(h.out(), /make it active on a BTC 1h chart/);
+});
+
+test('insights activate and deactivate', async () => {
+  const h = harness({
+    'POST /insights/ins_61/activate': { json: { insight: 'ins_61', active: true, state: 'live', replaced: ['ins_40'], in_use: 2, limit: 3 } },
+    'POST /insights/ins_61/deactivate': { json: { insight: 'ins_61', active: false, in_use: 1, limit: 'unlimited' } },
+  });
+  assert.equal(await h.run('insights', 'activate', 'ins_61'), 0, h.err());
+  assert.equal(h.calls[0]!.method, 'POST');
+  assert.match(h.out(), /active: ins_61 · 2 of 3 in use/);
+  assert.match(h.out(), /replaced: ins_40/);
+  assert.equal(await h.run('insights', 'deactivate', 'ins_61'), 0, h.err());
+  assert.match(h.out(), /not active: ins_61 · 1 in use \(unlimited\)/);
+});
+
+test('insights activate on full charts is a plan refusal naming the active ones', async () => {
+  const h = harness({
+    'POST /insights/ins_61/activate': {
+      status: 403,
+      json: { error: { code: 'plan_limit', message: 'Your charts are full (1 of 1): ORB on NAS100 15m. Stop showing it, or upgrade for more.', details: { limit: 1, active: [{ insight: 'ins_40' }] } } },
+    },
+  });
+  assert.notEqual(await h.run('insights', 'activate', 'ins_61'), 0);
+  assert.match(h.err(), /Your charts are full \(1 of 1\): ORB on NAS100 15m/);
+});
+
+test('a malformed id to activate or --replaces is a usage error and makes no request', async () => {
+  const h = harness();
+  assert.notEqual(await h.run('insights', 'activate', '61'), 0);
+  assert.notEqual(await h.run('insights', 'create', 'run_1', '--name', 'X', '--replaces', 'nope'), 0);
+  assert.equal(h.calls.length, 0);
+});

@@ -340,16 +340,19 @@ A Forward Insight puts a study on your charts: click one of the definition's eve
 
 | Command | What it does | Flags |
 |---|---|---|
-| `chartnaut insights` | Lists your Forward Insights | `--definition`, `--study`, `--on`, `--tf`, `--limit`, `--cursor` |
-| `chartnaut insights create <run>` | Puts a succeeded study run on your charts (its instrument and timeframe) | `--name` (required), `--definition`, `--description`, `--dry-run`, `--no-replace` |
+| `chartnaut insights` | Lists your Forward Insights and which are active | `--definition`, `--study`, `--on`, `--tf`, `--limit`, `--cursor` |
+| `chartnaut insights create <run>` | Saves a succeeded study run to your library as a Forward Insight (its instrument and timeframe) | `--name` (required), `--definition`, `--description`, `--dry-run`, `--no-replace`, `--replaces <id>` |
 | `chartnaut insights show <id>` | One insight | |
 | `chartnaut insights update <id>` | Renames it or changes its description | `--name`, `--description` |
-| `chartnaut insights rm <id>` | Takes it off your charts; the study and runs are kept | |
+| `chartnaut insights activate <id>` | Shows it on your charts of its definition, instrument and timeframe (replaces the one active there). Your plan sets how many can be active at once | |
+| `chartnaut insights deactivate <id>` | Stops showing it; it stays in your library | |
+| `chartnaut insights rm <id>` | Deletes it from your library; the study and runs are kept | |
 
 ```bash
 chartnaut run my-study --on BTC --tf 1h --last 2y
 chartnaut insights create run_7k2m9q4xw1ht0bza --name "Follow-through by session" --dry-run
 chartnaut insights create run_7k2m9q4xw1ht0bza --name "Follow-through by session"
+chartnaut insights activate ins_123
 ```
 
 When the study needs a change, the error ends with a `fix:` line and a `docs:` link.

@@ -2,6 +2,19 @@
 
 Notable changes to the Chartnaut CLI. Versions follow [Semantic Versioning](https://semver.org/).
 
+## 0.3.0
+
+Upgrade with `chartnaut upgrade`.
+
+### Active Forward Insights
+
+- `chartnaut insights create` now saves the insight to your library. It shows on your charts once you make it active.
+- `chartnaut insights activate <id>` shows an insight on your charts of its definition, instrument and timeframe, and replaces the one active there. Your plan sets how many can be active at once; when your charts are full it names the active ones and exits 3.
+- `chartnaut insights deactivate <id>` stops showing it. It stays in your library.
+- `chartnaut insights rm <id>` deletes it from your library. The study and its runs are kept.
+- `chartnaut insights create --replaces <id>` re-saves that insight, whatever its name is now. It stays active if it was.
+- `chartnaut insights` has an `active` column, and `chartnaut insights show` prints whether it is on your charts and when its out-of-sample period starts.
+
 ## 0.2.0
 
 Upgrade with `chartnaut upgrade`.
